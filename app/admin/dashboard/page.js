@@ -8,9 +8,12 @@ import Link from 'next/link'
 export default function AdminDashboard() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [darkMode, setDarkMode] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
+    const saved = localStorage.getItem('artbit-theme')
+    if (saved === 'dark') setDarkMode(true)
     checkUser()
   }, [])
 
@@ -29,27 +32,37 @@ export default function AdminDashboard() {
     router.push('/admin/login')
   }
 
+  const bg = darkMode ? 'bg-[#1b1b18]' : 'bg-[#f2ede1]'
+  const text = darkMode ? 'text-[#f2ede1]' : 'text-[#1b1b18]'
+  const card = darkMode ? 'bg-[#252522] border-[#f2ede1]/15' : 'bg-white border-[#1b1b18]/15'
+  const headerBg = darkMode ? 'bg-[#252522]' : 'bg-white'
+  const muted = darkMode ? 'text-gray-400' : 'text-gray-500'
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f2ede1] flex items-center justify-center">
-        <p className="font-mono text-sm text-[#1b1b18]">Loading...</p>
+      <div className={`min-h-screen ${bg} flex items-center justify-center`}>
+        <p className={`font-mono text-sm ${text}`}>Loading...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#f2ede1] text-[#1b1b18]">
-      <header className="border-b border-[#1b1b18]/20 bg-white">
+    <div className={`min-h-screen ${bg} ${text}`}>
+      <header className={`border-b ${darkMode ? 'border-[#f2ede1]/15' : 'border-[#1b1b18]/20'} ${headerBg}`}>
         <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="font-black text-lg uppercase tracking-tight">Artbit</span>
-            <span className="text-xs text-gray-500 font-mono">Admin</span>
+            <span className={`text-xs font-mono ${muted}`}>Admin</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-600 hidden sm:block">{user?.email}</span>
+            <span className={`text-xs ${muted} hidden sm:block`}>{user?.email}</span>
             <button
               onClick={handleLogout}
-              className="text-xs font-mono uppercase border border-[#1b1b18] px-3 py-1.5 hover:bg-[#1b1b18] hover:text-white transition"
+              className={`text-xs font-mono uppercase border px-3 py-1.5 transition ${
+                darkMode
+                  ? 'border-[#f2ede1]/40 hover:bg-[#f2ede1] hover:text-[#1b1b18]'
+                  : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-white'
+              }`}
             >
               Logout
             </button>
@@ -58,39 +71,39 @@ export default function AdminDashboard() {
       </header>
 
       <main className="max-w-6xl mx-auto px-5 py-10">
-        <h1 className="text-3xl font-black uppercase mb-8 text-[#1b1b18]">Dashboard</h1>
+        <h1 className="text-3xl font-black uppercase mb-8">Dashboard</h1>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link
             href="/admin/products"
-            className="bg-white border border-[#1b1b18]/15 p-6 hover:border-[#1b1b18] transition block"
+            className={`${card} border p-6 hover:opacity-90 transition block`}
           >
-            <p className="text-[11px] font-mono uppercase text-gray-500 mb-1">Manage</p>
-            <h2 className="text-xl font-bold text-[#1b1b18]">Products</h2>
+            <p className={`text-[11px] font-mono uppercase ${muted} mb-1`}>Manage</p>
+            <h2 className="text-xl font-bold">Products</h2>
           </Link>
 
           <Link
             href="/admin/orders"
-            className="bg-white border border-[#1b1b18]/15 p-6 hover:border-[#1b1b18] transition block"
+            className={`${card} border p-6 hover:opacity-90 transition block`}
           >
-            <p className="text-[11px] font-mono uppercase text-gray-500 mb-1">Manage</p>
-            <h2 className="text-xl font-bold text-[#1b1b18]">Orders</h2>
+            <p className={`text-[11px] font-mono uppercase ${muted} mb-1`}>Manage</p>
+            <h2 className="text-xl font-bold">Orders</h2>
           </Link>
 
           <Link
             href="/admin/custom-requests"
-            className="bg-white border border-[#1b1b18]/15 p-6 hover:border-[#1b1b18] transition block"
+            className={`${card} border p-6 hover:opacity-90 transition block`}
           >
-            <p className="text-[11px] font-mono uppercase text-gray-500 mb-1">Manage</p>
-            <h2 className="text-xl font-bold text-[#1b1b18]">Custom Requests</h2>
+            <p className={`text-[11px] font-mono uppercase ${muted} mb-1`}>Manage</p>
+            <h2 className="text-xl font-bold">Custom Requests</h2>
           </Link>
 
           <Link
             href="/admin/users"
-            className="bg-white border border-[#1b1b18]/15 p-6 hover:border-[#1b1b18] transition block"
+            className={`${card} border p-6 hover:opacity-90 transition block`}
           >
-            <p className="text-[11px] font-mono uppercase text-gray-500 mb-1">Manage</p>
-            <h2 className="text-xl font-bold text-[#1b1b18]">Users</h2>
+            <p className={`text-[11px] font-mono uppercase ${muted} mb-1`}>Manage</p>
+            <h2 className="text-xl font-bold">Users</h2>
           </Link>
         </div>
       </main>
