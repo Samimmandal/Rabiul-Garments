@@ -240,25 +240,71 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="contact" className="py-16 md:py-20">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6">
-          <p className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#2c6660] mb-2">Let's talk prints</p>
-          <h2 className="text-3xl font-black uppercase mb-4">Have a Custom Order in Mind?</h2>
-          <p className={`${muted} max-w-md mb-6 leading-relaxed`}>
-            Tell us about the run — quantity, garment, deadline — and we'll get back with a quote within one business day.
-          </p>
-          <p className="font-mono text-sm">
-            Email: <a href="mailto:hello@artbit.com" className="underline hover:text-[#2c6660]">hello@artbit.com</a>
-          </p>
-        </div>
-      </section>
+     {/* Contact */}
+<section id="contact" className="py-16 md:py-20">
+  <div className="max-w-6xl mx-auto px-5 sm:px-6">
+    <p className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#2c6660] mb-2">
+      Let's talk prints
+    </p>
+    <h2 className="text-3xl font-black uppercase mb-4">
+      Have a Custom Order in Mind?
+    </h2>
+    <p className={`${muted} max-w-md mb-8 leading-relaxed`}>
+      Tell us about the run — quantity, garment, deadline — and we'll get back with a quote within one business day.
+    </p>
 
-      <footer className={`border-t ${border} py-8`}>
-        <div className="max-w-6xl mx-auto px-5 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-[11px] font-mono text-gray-500">
-          <span>© 2026 Artbit Print Co. All rights reserved.</span>
-          <span>Printed to order, batch by batch.</span>
-        </div>
-      </footer>
+    <div className="flex flex-wrap items-center gap-3">
+      {/* Instagram */}
+      <a
+        href="https://www.instagram.com/artbit.co.in?igsh=ZHJyNXFhb2VwY2xr"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`inline-flex items-center justify-center w-12 h-12 border transition ${
+          darkMode
+            ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]'
+            : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'
+        }`}
+        aria-label="Instagram"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+          <circle cx="12" cy="12" r="4" />
+          <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+        </svg>
+      </a>
+
+      {/* Facebook */}
+      <a
+        href="https://www.facebook.com/share/19Eop63Sz3/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`inline-flex items-center justify-center w-12 h-12 border transition ${
+          darkMode
+            ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]'
+            : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'
+        }`}
+        aria-label="Facebook"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+        </svg>
+      </a>
+
+      {/* Email */}
+      <a
+        href="mailto:artbit.hq@gmail.com"
+        className={`inline-flex items-center justify-center w-12 h-12 border transition ${
+          darkMode
+            ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]'
+            : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'
+        }`}
+        aria-label="Email"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="4" width="20" height="16" rx="2" />
+          <path d="M22 6l-10 7L2 6" />
+        </svg>
+      </a>
     </div>
-  )
-}
+  </div>
+</section>
