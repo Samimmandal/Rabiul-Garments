@@ -11,17 +11,18 @@ export default function AdminDashboard() {
   const router = useRouter()
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/admin/login')
-      } else {
-        setUser(user)
-      }
-      setLoading(false)
-    }
     checkUser()
-  }, [router])
+  }, [])
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      router.push('/admin/login')
+      return
+    }
+    setUser(user)
+    setLoading(false)
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -31,25 +32,24 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f2ede1] flex items-center justify-center">
-        <p className="font-mono text-sm">Loading...</p>
+        <p className="font-mono text-sm text-[#1b1b18]">Loading...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#f2ede1]">
-      {/* Header */}
-      <header className="border-b border-[#1b1b18]/20 bg-[#f2ede1]">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-[#f2ede1] text-[#1b1b18]">
+      <header className="border-b border-[#1b1b18]/20 bg-white">
+        <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="font-black text-xl uppercase">Artbit</span>
-            <span className="text-xs font-mono text-gray-500">Admin</span>
+            <span className="font-black text-lg uppercase tracking-tight">Artbit</span>
+            <span className="text-xs text-gray-500 font-mono">Admin</span>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">{user?.email}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-600 hidden sm:block">{user?.email}</span>
             <button
               onClick={handleLogout}
-              className="text-xs font-mono uppercase border border-[#1b1b18] px-3 py-1.5 hover:bg-[#1b1b18] hover:text-[#f2ede1] transition"
+              className="text-xs font-mono uppercase border border-[#1b1b18] px-3 py-1.5 hover:bg-[#1b1b18] hover:text-white transition"
             >
               Logout
             </button>
@@ -57,29 +57,41 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-10">
-        <h1 className="text-3xl font-black uppercase mb-8">Dashboard</h1>
+      <main className="max-w-6xl mx-auto px-5 py-10">
+        <h1 className="text-3xl font-black uppercase mb-8 text-[#1b1b18]">Dashboard</h1>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link href="/admin/products" className="bg-white border border-[#1b1b18]/15 p-6 hover:border-[#2c6660] transition">
-            <p className="text-xs font-mono uppercase text-gray-500 mb-2">Manage</p>
-            <h2 className="text-xl font-bold">Products</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Link
+            href="/admin/products"
+            className="bg-white border border-[#1b1b18]/15 p-6 hover:border-[#1b1b18] transition block"
+          >
+            <p className="text-[11px] font-mono uppercase text-gray-500 mb-1">Manage</p>
+            <h2 className="text-xl font-bold text-[#1b1b18]">Products</h2>
           </Link>
 
-          <Link href="/admin/orders" className="bg-white border border-[#1b1b18]/15 p-6 hover:border-[#2c6660] transition">
-            <p className="text-xs font-mono uppercase text-gray-500 mb-2">Manage</p>
-            <h2 className="text-xl font-bold">Orders</h2>
+          <Link
+            href="/admin/orders"
+            className="bg-white border border-[#1b1b18]/15 p-6 hover:border-[#1b1b18] transition block"
+          >
+            <p className="text-[11px] font-mono uppercase text-gray-500 mb-1">Manage</p>
+            <h2 className="text-xl font-bold text-[#1b1b18]">Orders</h2>
           </Link>
 
-          <Link href="/admin/custom-requests" className="bg-white border border-[#1b1b18]/15 p-6 hover:border-[#2c6660] transition">
-            <p className="text-xs font-mono uppercase text-gray-500 mb-2">Manage</p>
-            <h2 className="text-xl font-bold">Custom Requests</h2>
+          <Link
+            href="/admin/custom-requests"
+            className="bg-white border border-[#1b1b18]/15 p-6 hover:border-[#1b1b18] transition block"
+          >
+            <p className="text-[11px] font-mono uppercase text-gray-500 mb-1">Manage</p>
+            <h2 className="text-xl font-bold text-[#1b1b18]">Custom Requests</h2>
           </Link>
 
-          <div className="bg-white border border-[#1b1b18]/15 p-6 opacity-60">
-            <p className="text-xs font-mono uppercase text-gray-500 mb-2">Coming Soon</p>
-            <h2 className="text-xl font-bold">Settings</h2>
-          </div>
+          <Link
+            href="/admin/users"
+            className="bg-white border border-[#1b1b18]/15 p-6 hover:border-[#1b1b18] transition block"
+          >
+            <p className="text-[11px] font-mono uppercase text-gray-500 mb-1">Manage</p>
+            <h2 className="text-xl font-bold text-[#1b1b18]">Users</h2>
+          </Link>
         </div>
       </main>
     </div>
