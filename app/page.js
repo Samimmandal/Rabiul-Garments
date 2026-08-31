@@ -7,10 +7,51 @@ import Link from 'next/link'
 export default function HomePage() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(null)
 
   useEffect(() => {
     fetchProducts()
+    checkUser()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null)
+      if (session?.user) {
+        saveProfile(session.user)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    setUser(user)
+  }
+
+  const saveProfile = async (user) => {
+    const { error } = await supabase.from('profiles').upsert({
+      id: user.id,
+      email: user.email,
+      full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+      avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+      updated_at: new Date().toISOString()
+    })
+    if (error) console.log('Profile save error:', error.message)
+  }
+
+  const handleGoogleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    })
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+  }
 
   const fetchProducts = async () => {
     const { data } = await supabase
@@ -38,9 +79,31 @@ export default function HomePage() {
             <a href="#process" className="hover:text-[#2c6660] transition">Process</a>
             <a href="#contact" className="hover:text-[#2c6660] transition">Contact</a>
           </nav>
-          <Link href="/admin/login" className="text-[11px] font-mono uppercase border border-[#1b1b18] px-3 py-1.5 hover:bg-[#1b1b18] hover:text-[#f2ede1] transition">
-            Admin
-          </Link>
+          <div className="flex items-center gap-3">
+            {user ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-600 hidden sm:block max-w-[120px] truncate">
+                  {user.user_metadata?.full_name || user.email}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="text-[11px] font-mono uppercase border border-[#1b1b18] px-3 py-1.5 hover:bg-[#1b1b18] hover:text-[#f2ede1] transition"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleGoogleLogin}
+                className="text-[11px] font-mono uppercase border border-[#1b1b18] px-3 py-1.5 hover:bg-[#1b1b18] hover:text-[#f2ede1] transition"
+              >
+                Login with Google
+              </button>
+            )}
+            <Link href="/admin/login" className="text-[11px] font-mono uppercase border border-[#1b1b18] px-3 py-1.5 hover:bg-[#1b1b18] hover:text-[#f2ede1] transition hidden sm:inline-block">
+              Admin
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -49,17 +112,14 @@ export default function HomePage() {
         <p className="text-[11px] font-mono uppercase tracking-[0.15em] text-[#2c6660] mb-5">
           Small-batch screen print house
         </p>
-
         <h1 className="text-[clamp(2.8rem,7vw,5.5rem)] font-black uppercase leading-[0.92] tracking-tight">
           Printed by<br />
           Hand, Worn<br />
           On Purpose.
         </h1>
-
         <p className="max-w-md text-[#4a453d] mt-6 text-[15px] leading-relaxed">
           Every tee, hoodie and tote passes through our press before it reaches yours — mixed inks, hand-pulled squeegees, zero shortcuts.
         </p>
-
         <div className="flex flex-wrap gap-3 mt-8">
           <Link href="/shop" className="bg-[#1b1b18] text-[#f2ede1] px-6 py-3.5 font-mono text-xs uppercase tracking-wider hover:bg-transparent hover:text-[#1b1b18] border border-[#1b1b18] transition">
             Shop the Line
@@ -169,7 +229,6 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-5 sm:px-6">
           <p className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#2c6660] mb-1">How a print gets made</p>
           <h2 className="text-3xl md:text-4xl font-black uppercase mb-10">The Artbit Process</h2>
-
           <div className="grid md:grid-cols-3 border border-[#1b1b18]/15">
             {[
               { num: '01 / Art', title: 'Separate the art', desc: 'We break your design into layers, one screen per colour, checking registration before a single squeegee pass.' },
