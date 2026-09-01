@@ -13,8 +13,10 @@ export default function HomePage() {
   useEffect(() => {
     const saved = localStorage.getItem('artbit-theme')
     if (saved === 'dark') setDarkMode(true)
+
     fetchProducts()
     checkUser()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null)
       if (session?.user) saveProfile(session.user)
@@ -72,86 +74,45 @@ export default function HomePage() {
   const border = darkMode ? 'border-[#f2ede1]/15' : 'border-[#1b1b18]/15'
   const cardBg = darkMode ? 'bg-[#252522]' : 'bg-[#f2ede1]'
   const hoverBg = darkMode ? 'hover:bg-[#2a2a27]' : 'hover:bg-[#e9e1d1]'
-  const iconBtn = `inline-flex items-center justify-center w-10 h-10 border transition ${
-    darkMode
-      ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]'
-      : 'border-[#1b1b18]/25 hover:bg-[#1b1b18] hover:text-[#f2ede1]'
-  }`
 
   return (
     <div className={`min-h-screen ${bg} ${text}`}>
       <header className={`border-b ${border} sticky top-0 ${bg} z-50`}>
-        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
-          <Link href="/" className="font-black text-xl uppercase tracking-tight shrink-0">
-            Artbit
-          </Link>
-
+        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-4 flex items-center justify-between">
+          <Link href="/" className="font-black text-xl uppercase tracking-tight">Artbit</Link>
           <nav className="hidden md:flex gap-7 text-xs font-semibold uppercase tracking-widest">
             <Link href="/shop" className="hover:text-[#2c6660] transition">Shop</Link>
             <a href="#custom" className="hover:text-[#2c6660] transition">Custom Prints</a>
             <a href="#process" className="hover:text-[#2c6660] transition">Process</a>
             <a href="#contact" className="hover:text-[#2c6660] transition">Contact</a>
           </nav>
-
-          <div className="flex items-center gap-2">
-            {/* Cart */}
-            <Link href="/cart" className={iconBtn} aria-label="Cart" title="Cart">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 6h15l-1.5 9h-12z" />
-                <circle cx="9" cy="20" r="1" fill="currentColor" stroke="none" />
-                <circle cx="18" cy="20" r="1" fill="currentColor" stroke="none" />
-                <path d="M6 6L5 3H2" />
-              </svg>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={toggleTheme}
+              className={`text-[11px] font-mono uppercase border px-3 py-1.5 transition ${
+                darkMode ? 'border-[#f2ede1]/40 hover:bg-[#f2ede1] hover:text-[#1b1b18]' : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'
+              }`}
+            >
+              {darkMode ? 'Light' : 'Dark'}
+            </button>
+            <Link href="/cart" className={`text-[11px] font-mono uppercase border px-3 py-1.5 hidden sm:inline-block transition ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
+              Cart
             </Link>
-
-            {/* Wishlist */}
-            <Link href="/wishlist" className={iconBtn} aria-label="Wishlist" title="Wishlist">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
-              </svg>
+            <Link href="/account" className={`text-[11px] font-mono uppercase border px-3 py-1.5 hidden sm:inline-block transition ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
+              Orders
             </Link>
-
-            {/* Orders */}
-            <Link href="/account" className={iconBtn} aria-label="My Orders" title="My Orders">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                <path d="M3.3 7L12 12l8.7-5" />
-                <path d="M12 22V12" />
-              </svg>
-            </Link>
-
-            {/* Login / Logout */}
             {user ? (
-              <button onClick={handleLogout} className={iconBtn} aria-label="Logout" title="Logout">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
+              <button onClick={handleLogout} className={`text-[11px] font-mono uppercase border px-3 py-1.5 transition ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
+                Logout
               </button>
             ) : (
-              <button onClick={handleGoogleLogin} className={iconBtn} aria-label="Login" title="Login">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                  <polyline points="10 17 15 12 10 7" />
-                  <line x1="15" y1="12" x2="3" y2="12" />
-                </svg>
+              <button onClick={handleGoogleLogin} className={`text-[11px] font-mono uppercase border px-3 py-1.5 transition ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
+                Login
               </button>
             )}
-
-            {/* Dark / Light — last */}
-            <button onClick={toggleTheme} className={iconBtn} aria-label="Toggle theme" title={darkMode ? 'Light mode' : 'Dark mode'}>
-              {darkMode ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="4" />
-                  <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-                </svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 14.5A8.5 8.5 0 1 1 9.5 3a7 7 0 0 0 11.5 11.5z" />
-                </svg>
-              )}
-            </button>
+            <Link href="/admin/login" className={`text-[11px] font-mono uppercase border px-3 py-1.5 hidden sm:inline-block transition ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
+              Admin
+            </Link>
           </div>
         </div>
       </header>
@@ -287,26 +248,61 @@ export default function HomePage() {
 
       <section id="contact" className="py-16 md:py-20">
         <div className="max-w-6xl mx-auto px-5 sm:px-6">
-          <p className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#2c6660] mb-2">Let's talk prints</p>
-          <h2 className="text-3xl font-black uppercase mb-4">Have a Custom Order in Mind?</h2>
+          <p className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#2c6660] mb-2">
+            Let's talk prints
+          </p>
+          <h2 className="text-3xl font-black uppercase mb-4">
+            Have a Custom Order in Mind?
+          </h2>
           <p className={`${muted} max-w-md mb-8 leading-relaxed`}>
             Tell us about the run — quantity, garment, deadline — and we'll get back with a quote within one business day.
           </p>
+
           <div className="flex flex-wrap items-center gap-3">
-            <a href="https://www.instagram.com/artbit.co.in?igsh=ZHJyNXFhb2VwY2xr" target="_blank" rel="noopener noreferrer" className={iconBtn} aria-label="Instagram">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="2" width="20" height="20" rx="5" />
+            <a
+              href="https://www.instagram.com/artbit.co.in?igsh=ZHJyNXFhb2VwY2xr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`inline-flex items-center justify-center w-12 h-12 border transition ${
+                darkMode
+                  ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]'
+                  : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'
+              }`}
+              aria-label="Instagram"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
                 <circle cx="12" cy="12" r="4" />
                 <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
               </svg>
             </a>
-            <a href="https://www.facebook.com/share/19Eop63Sz3/" target="_blank" rel="noopener noreferrer" className={iconBtn} aria-label="Facebook">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+
+            <a
+              href="https://www.facebook.com/share/19Eop63Sz3/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`inline-flex items-center justify-center w-12 h-12 border transition ${
+                darkMode
+                  ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]'
+                  : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'
+              }`}
+              aria-label="Facebook"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
               </svg>
             </a>
-            <a href="mailto:artbit.hq@gmail.com" className={iconBtn} aria-label="Email">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+
+            <a
+              href="mailto:artbit.hq@gmail.com"
+              className={`inline-flex items-center justify-center w-12 h-12 border transition ${
+                darkMode
+                  ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]'
+                  : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'
+              }`}
+              aria-label="Email"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="4" width="20" height="16" rx="2" />
                 <path d="M22 6l-10 7L2 6" />
               </svg>
@@ -315,10 +311,21 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className={`border-t ${border} py-8`}>
-        <div className="max-w-6xl mx-auto px-5 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-[11px] font-mono text-gray-500">
-          <span>© 2026 Artbit Print Co. All rights reserved.</span>
-          <span>Printed to order, batch by batch.</span>
+      <footer className={`border-t ${border} py-10`}>
+        <div className="max-w-6xl mx-auto px-5 sm:px-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
+            <span className="font-black text-lg uppercase">Artbit</span>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-mono uppercase tracking-wider">
+              <Link href="/page/about" className="hover:text-[#2c6660] transition">About Us</Link>
+              <Link href="/page/terms" className="hover:text-[#2c6660] transition">Terms & Conditions</Link>
+              <Link href="/page/privacy" className="hover:text-[#2c6660] transition">Privacy Policy</Link>
+              <Link href="/page/hiring" className="hover:text-[#2c6660] transition">We Are Hiring</Link>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 text-[11px] font-mono text-gray-500 border-t border-current/10 pt-6">
+            <span>© 2026 Artbit Print Co. All rights reserved.</span>
+            <span>Printed to order, batch by batch.</span>
+          </div>
         </div>
       </footer>
     </div>
