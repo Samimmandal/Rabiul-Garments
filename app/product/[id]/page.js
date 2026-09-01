@@ -98,7 +98,6 @@ export default function ProductDetails() {
       quantity: 1,
       size: selectedSize || 'M'
     }, { onConflict: 'user_id,product_id,size' })
-
     if (error) alert('Error: ' + error.message)
     else alert('Added to cart!')
     setCartLoading(false)
@@ -111,7 +110,6 @@ export default function ProductDetails() {
       user_id: user.id,
       product_id: parseInt(id)
     }, { onConflict: 'user_id,product_id' })
-
     if (error) alert('Error: ' + error.message)
     else alert('Added to wishlist!')
     setWishLoading(false)
@@ -219,6 +217,11 @@ export default function ProductDetails() {
   const text = darkMode ? 'text-[#f2ede1]' : 'text-[#1b1b18]'
   const card = darkMode ? 'bg-[#252522] border-[#f2ede1]/10' : 'bg-white border-[#1b1b18]/15'
   const muted = darkMode ? 'text-gray-400' : 'text-gray-600'
+  const iconBtn = `inline-flex items-center justify-center w-10 h-10 border transition ${
+    darkMode
+      ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]'
+      : 'border-[#1b1b18]/25 hover:bg-[#1b1b18] hover:text-[#f2ede1]'
+  }`
 
   if (loading) {
     return (
@@ -245,16 +248,47 @@ export default function ProductDetails() {
   return (
     <div className={`min-h-screen ${bg} ${text}`}>
       <header className={`border-b ${darkMode ? 'border-[#f2ede1]/15' : 'border-[#1b1b18]/20'} sticky top-0 ${bg} z-50`}>
-        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="font-black text-xl uppercase tracking-tight">Artbit</Link>
-          <div className="flex items-center gap-3 text-xs font-mono uppercase">
-            <button onClick={toggleTheme} className={`border px-3 py-1.5 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
-              {darkMode ? 'Light' : 'Dark'}
+        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
+          <Link href="/" className="font-black text-xl uppercase tracking-tight shrink-0">Artbit</Link>
+          <div className="flex items-center gap-2">
+            <Link href="/cart" className={iconBtn} aria-label="Cart" title="Cart">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 6h15l-1.5 9h-12z" />
+                <circle cx="9" cy="20" r="1" fill="currentColor" stroke="none" />
+                <circle cx="18" cy="20" r="1" fill="currentColor" stroke="none" />
+                <path d="M6 6L5 3H2" />
+              </svg>
+            </Link>
+            <Link href="/wishlist" className={iconBtn} aria-label="Wishlist" title="Wishlist">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+              </svg>
+            </Link>
+            <Link href="/account" className={iconBtn} aria-label="Orders" title="My Orders">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                <path d="M3.3 7L12 12l8.7-5" />
+                <path d="M12 22V12" />
+              </svg>
+            </Link>
+            <Link href="/shop" className={iconBtn} aria-label="Shop" title="Shop">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+            </Link>
+            <button onClick={toggleTheme} className={iconBtn} aria-label="Theme" title={darkMode ? 'Light' : 'Dark'}>
+              {darkMode ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 14.5A8.5 8.5 0 1 1 9.5 3a7 7 0 0 0 11.5 11.5z" />
+                </svg>
+              )}
             </button>
-            <Link href="/cart" className="hover:underline">Cart</Link>
-            <Link href="/wishlist" className="hover:underline">Wishlist</Link>
-            <Link href="/account" className="hover:underline">Orders</Link>
-            <Link href="/shop" className="hover:underline">Shop</Link>
           </div>
         </div>
       </header>
