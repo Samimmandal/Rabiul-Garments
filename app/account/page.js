@@ -46,8 +46,8 @@ export default function AccountPage() {
       paid: 'Payment Confirmed',
       shipped: 'Shipped',
       delivered: 'Delivered',
-      cancelled: 'Cancelled'
-      cod: 'Cash on Delivery',
+      cancelled: 'Cancelled',
+      cod: 'Cash on Delivery'
     }
     return map[status] || status
   }
