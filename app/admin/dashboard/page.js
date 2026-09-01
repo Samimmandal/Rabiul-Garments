@@ -74,36 +74,34 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-black uppercase mb-8">Dashboard</h1>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Link
-            href="/admin/products"
-            className={`${card} border p-6 hover:opacity-90 transition block`}
-          >
+          <Link href="/admin/products" className={`${card} border p-6 hover:opacity-90 transition block`}>
             <p className={`text-[11px] font-mono uppercase ${muted} mb-1`}>Manage</p>
             <h2 className="text-xl font-bold">Products</h2>
           </Link>
 
-          <Link
-            href="/admin/orders"
-            className={`${card} border p-6 hover:opacity-90 transition block`}
-          >
+          <Link href="/admin/orders" className={`${card} border p-6 hover:opacity-90 transition block`}>
             <p className={`text-[11px] font-mono uppercase ${muted} mb-1`}>Manage</p>
             <h2 className="text-xl font-bold">Orders</h2>
           </Link>
 
-          <Link
-            href="/admin/custom-requests"
-            className={`${card} border p-6 hover:opacity-90 transition block`}
-          >
+          <Link href="/admin/coupons" className={`${card} border p-6 hover:opacity-90 transition block`}>
+            <p className={`text-[11px] font-mono uppercase ${muted} mb-1`}>Manage</p>
+            <h2 className="text-xl font-bold">Coupons</h2>
+          </Link>
+
+          <Link href="/admin/custom-requests" className={`${card} border p-6 hover:opacity-90 transition block`}>
             <p className={`text-[11px] font-mono uppercase ${muted} mb-1`}>Manage</p>
             <h2 className="text-xl font-bold">Custom Requests</h2>
           </Link>
 
-          <Link
-            href="/admin/users"
-            className={`${card} border p-6 hover:opacity-90 transition block`}
-          >
+          <Link href="/admin/users" className={`${card} border p-6 hover:opacity-90 transition block`}>
             <p className={`text-[11px] font-mono uppercase ${muted} mb-1`}>Manage</p>
             <h2 className="text-xl font-bold">Users</h2>
+          </Link>
+
+          <Link href="/admin/content" className={`${card} border p-6 hover:opacity-90 transition block`}>
+            <p className={`text-[11px] font-mono uppercase ${muted} mb-1`}>Manage</p>
+            <h2 className="text-xl font-bold">Site Content</h2>
           </Link>
         </div>
       </main>
