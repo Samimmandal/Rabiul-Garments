@@ -232,7 +232,7 @@ export default function ProductDetails() {
     return (
       <div className={`min-h-screen ${bg} flex flex-col items-center justify-center gap-4`}>
         <p className={`font-mono ${text}`}>Product not found</p>
-        <Link href="/shop" className="text-sm underline">← Back to Shop</Link>
+        <Link href="/shop" className="text-sm underline">Back to Shop</Link>
       </div>
     )
   }
@@ -280,7 +280,7 @@ export default function ProductDetails() {
               ₹{Number(product.price).toLocaleString('en-IN')}
             </p>
             {avgRating && (
-              <p className={`text-sm ${muted} mb-6`}>★ {avgRating} ({reviews.length} review{reviews.length !== 1 ? 's' : ''})</p>
+              <p className={`text-sm ${muted} mb-6`}>★ {avgRating} ({reviews.length} reviews)</p>
             )}
             {product.description && (
               <p className={`${muted} leading-relaxed mb-8`}>{product.description}</p>
@@ -341,7 +341,6 @@ export default function ProductDetails() {
           </div>
         </div>
 
-        {/* Reviews */}
         <div className="mt-16 md:mt-20">
           <h2 className="text-2xl font-black uppercase mb-6">Reviews</h2>
           {reviews.length === 0 ? (
@@ -364,8 +363,122 @@ export default function ProductDetails() {
             <h3 className="font-bold uppercase text-sm">Write a Review</h3>
             <div>
               <label className={`text-xs font-mono uppercase ${muted}`}>Your Name *</label>
-              <input required value={reviewForm.reviewer_name} onChange={e => setReviewForm({...reviewForm, reviewer_name: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
+              <input
+                required
+                value={reviewForm.reviewer_name}
+                onChange={e => setReviewForm({ ...reviewForm, reviewer_name: e.target.value })}
+                className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
+              />
             </div>
             <div>
               <label className={`text-xs font-mono uppercase ${muted}`}>Rating *</label>
-              <select value={reviewForm.rating} 
+              <select
+                value={reviewForm.rating}
+                onChange={e => setReviewForm({ ...reviewForm, rating: e.target.value })}
+                className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
+              >
+                <option value={5}>5 Stars</option>
+                <option value={4}>4 Stars</option>
+                <option value={3}>3 Stars</option>
+                <option value={2}>2 Stars</option>
+                <option value={1}>1 Star</option>
+              </select>
+            </div>
+            <div>
+              <label className={`text-xs font-mono uppercase ${muted}`}>Comment</label>
+              <textarea
+                value={reviewForm.comment}
+                onChange={e => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                className={`w-full border p-2 mt-1 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
+                rows={3}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submittingReview}
+              className="bg-[#2c6660] text-white px-6 py-2 font-mono text-sm uppercase disabled:opacity-50"
+            >
+              {submittingReview ? 'Submitting...' : 'Submit Review'}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      {showOrderForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className={`${bg} w-full max-w-md p-6 md:p-8 max-h-[90vh] overflow-y-auto`}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-black uppercase">Place Order</h2>
+              <button onClick={() => setShowOrderForm(false)} className="text-sm font-mono hover:underline">Close</button>
+            </div>
+            <div className={`${card} border p-3 text-sm mb-6`}>
+              <p className="font-semibold">{product.name}</p>
+              <p className={muted}>Size: {selectedSize || '-'} · Qty: {orderForm.quantity}</p>
+              <p className="font-mono text-[#2c6660] mt-1">
+                Total: ₹{(product.price * orderForm.quantity).toLocaleString('en-IN')}
+              </p>
+            </div>
+            <form onSubmit={handleOrderSubmit} className="space-y-4">
+              <div>
+                <label className={`text-xs font-mono uppercase ${muted}`}>Full Name *</label>
+                <input
+                  required
+                  value={orderForm.customer_name}
+                  onChange={e => setOrderForm({ ...orderForm, customer_name: e.target.value })}
+                  className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className={`text-xs font-mono uppercase ${muted}`}>Email *</label>
+                <input
+                  required
+                  type="email"
+                  value={orderForm.customer_email}
+                  onChange={e => setOrderForm({ ...orderForm, customer_email: e.target.value })}
+                  className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className={`text-xs font-mono uppercase ${muted}`}>Phone *</label>
+                <input
+                  required
+                  value={orderForm.customer_phone}
+                  onChange={e => setOrderForm({ ...orderForm, customer_phone: e.target.value })}
+                  className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className={`text-xs font-mono uppercase ${muted}`}>Delivery Address *</label>
+                <textarea
+                  required
+                  value={orderForm.address}
+                  onChange={e => setOrderForm({ ...orderForm, address: e.target.value })}
+                  className={`w-full border p-2 mt-1 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
+                  rows={3}
+                />
+              </div>
+              <div>
+                <label className={`text-xs font-mono uppercase ${muted}`}>Quantity</label>
+                <input
+                  type="number"
+                  min="1"
+                  max={product.stock || 10}
+                  value={orderForm.quantity}
+                  onChange={e => setOrderForm({ ...orderForm, quantity: parseInt(e.target.value) || 1 })}
+                  className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full bg-[#2c6660] text-white py-3 font-mono text-sm uppercase disabled:opacity-50 mt-2"
+              >
+                {submitting ? 'Processing...' : 'Pay Now'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
