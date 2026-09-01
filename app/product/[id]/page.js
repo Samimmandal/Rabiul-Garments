@@ -23,18 +23,24 @@ export default function ProductDetails() {
   const [reviewForm, setReviewForm] = useState({ reviewer_name: '', rating: 5, comment: '' })
   const [submittingReview, setSubmittingReview] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+  const [user, setUser] = useState(null)
+  const [cartLoading, setCartLoading] = useState(false)
+  const [wishLoading, setWishLoading] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('artbit-theme')
     if (saved === 'dark') setDarkMode(true)
-  }, [])
-
-  useEffect(() => {
+    checkUser()
     if (id) {
       fetchProduct()
       fetchReviews()
     }
   }, [id])
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    setUser(user)
+  }
 
   const toggleTheme = () => {
     const next = !darkMode
@@ -68,14 +74,52 @@ export default function ProductDetails() {
       .eq('product_id', id)
       .eq('is_approved', true)
       .order('created_at', { ascending: false })
-
     setReviews(data || [])
+  }
+
+  const requireLogin = () => {
+    if (!user) {
+      alert('Please login first')
+      supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.href }
+      })
+      return false
+    }
+    return true
+  }
+
+  const addToCart = async () => {
+    if (!requireLogin()) return
+    setCartLoading(true)
+    const { error } = await supabase.from('cart').upsert({
+      user_id: user.id,
+      product_id: parseInt(id),
+      quantity: 1,
+      size: selectedSize || 'M'
+    }, { onConflict: 'user_id,product_id,size' })
+
+    if (error) alert('Error: ' + error.message)
+    else alert('Added to cart!')
+    setCartLoading(false)
+  }
+
+  const addToWishlist = async () => {
+    if (!requireLogin()) return
+    setWishLoading(true)
+    const { error } = await supabase.from('wishlist').upsert({
+      user_id: user.id,
+      product_id: parseInt(id)
+    }, { onConflict: 'user_id,product_id' })
+
+    if (error) alert('Error: ' + error.message)
+    else alert('Added to wishlist!')
+    setWishLoading(false)
   }
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault()
     setSubmittingReview(true)
-
     const { error } = await supabase.from('reviews').insert([{
       product_id: parseInt(id),
       reviewer_name: reviewForm.reviewer_name,
@@ -83,10 +127,8 @@ export default function ProductDetails() {
       comment: reviewForm.comment,
       is_approved: true
     }])
-
-    if (error) {
-      alert('Error: ' + error.message)
-    } else {
+    if (error) alert('Error: ' + error.message)
+    else {
       setReviewForm({ reviewer_name: '', rating: 5, comment: '' })
       fetchReviews()
       alert('Review submitted!')
@@ -107,16 +149,13 @@ export default function ProductDetails() {
   const handleOrderSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
-
     try {
       const totalAmount = product.price * orderForm.quantity
-
       const res = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: totalAmount })
       })
-
       const razorpayOrder = await res.json()
       if (!razorpayOrder.id) throw new Error(razorpayOrder.error || 'Failed to create payment order')
 
@@ -130,7 +169,7 @@ export default function ProductDetails() {
         name: 'Artbit',
         description: product.name,
         order_id: razorpayOrder.id,
-        handler: async function (response) {
+        handler: async function () {
           try {
             const { data: order, error: orderError } = await supabase
               .from('orders')
@@ -140,7 +179,8 @@ export default function ProductDetails() {
                 customer_phone: orderForm.customer_phone,
                 address: orderForm.address,
                 total_amount: totalAmount,
-                status: 'paid'
+                status: 'paid',
+                user_id: user?.id || null
               }])
               .select()
               .single()
@@ -168,9 +208,7 @@ export default function ProductDetails() {
         },
         theme: { color: '#2c6660' }
       }
-
-      const rzp = new window.Razorpay(options)
-      rzp.open()
+      new window.Razorpay(options).open()
     } catch (err) {
       alert('Error: ' + err.message)
     }
@@ -209,16 +247,14 @@ export default function ProductDetails() {
       <header className={`border-b ${darkMode ? 'border-[#f2ede1]/15' : 'border-[#1b1b18]/20'} sticky top-0 ${bg} z-50`}>
         <div className="max-w-6xl mx-auto px-5 sm:px-6 py-4 flex items-center justify-between">
           <Link href="/" className="font-black text-xl uppercase tracking-tight">Artbit</Link>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleTheme}
-              className={`text-[11px] font-mono uppercase border px-3 py-1.5 transition ${
-                darkMode ? 'border-[#f2ede1]/40 hover:bg-[#f2ede1] hover:text-[#1b1b18]' : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'
-              }`}
-            >
+          <div className="flex items-center gap-3 text-xs font-mono uppercase">
+            <button onClick={toggleTheme} className={`border px-3 py-1.5 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
               {darkMode ? 'Light' : 'Dark'}
             </button>
-            <Link href="/shop" className="text-xs font-mono uppercase hover:underline">← Shop</Link>
+            <Link href="/cart" className="hover:underline">Cart</Link>
+            <Link href="/wishlist" className="hover:underline">Wishlist</Link>
+            <Link href="/account" className="hover:underline">Orders</Link>
+            <Link href="/shop" className="hover:underline">Shop</Link>
           </div>
         </div>
       </header>
@@ -244,11 +280,8 @@ export default function ProductDetails() {
               ₹{Number(product.price).toLocaleString('en-IN')}
             </p>
             {avgRating && (
-              <p className={`text-sm ${muted} mb-6`}>
-                ★ {avgRating} ({reviews.length} review{reviews.length !== 1 ? 's' : ''})
-              </p>
+              <p className={`text-sm ${muted} mb-6`}>★ {avgRating} ({reviews.length} review{reviews.length !== 1 ? 's' : ''})</p>
             )}
-
             {product.description && (
               <p className={`${muted} leading-relaxed mb-8`}>{product.description}</p>
             )}
@@ -264,9 +297,7 @@ export default function ProductDetails() {
                       className={`px-4 py-2 text-sm font-mono border transition ${
                         selectedSize === size
                           ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]'
-                          : darkMode
-                            ? 'border-[#f2ede1]/30 hover:border-[#f2ede1]'
-                            : 'border-[#1b1b18]/30 hover:border-[#1b1b18]'
+                          : darkMode ? 'border-[#f2ede1]/30' : 'border-[#1b1b18]/30'
                       }`}
                     >
                       {size}
@@ -276,26 +307,45 @@ export default function ProductDetails() {
               </div>
             )}
 
-            <p className={`text-xs font-mono ${muted} mb-8`}>
+            <p className={`text-xs font-mono ${muted} mb-6`}>
               {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
             </p>
 
-            <button
-              onClick={() => setShowOrderForm(true)}
-              disabled={product.stock <= 0}
-              className="w-full sm:w-auto bg-[#1b1b18] text-[#f2ede1] px-8 py-4 font-mono text-sm uppercase tracking-wider border border-[#1b1b18] hover:opacity-90 transition disabled:opacity-40"
-            >
-              Order Now
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => setShowOrderForm(true)}
+                disabled={product.stock <= 0}
+                className="bg-[#1b1b18] text-[#f2ede1] px-6 py-3 font-mono text-sm uppercase tracking-wider border border-[#1b1b18] disabled:opacity-40"
+              >
+                Buy Now
+              </button>
+              <button
+                onClick={addToCart}
+                disabled={cartLoading || product.stock <= 0}
+                className={`border px-6 py-3 font-mono text-sm uppercase tracking-wider disabled:opacity-40 ${
+                  darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'
+                }`}
+              >
+                {cartLoading ? '...' : 'Add to Cart'}
+              </button>
+              <button
+                onClick={addToWishlist}
+                disabled={wishLoading}
+                className={`border px-6 py-3 font-mono text-sm uppercase tracking-wider disabled:opacity-40 ${
+                  darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'
+                }`}
+              >
+                {wishLoading ? '...' : 'Wishlist'}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Reviews Section */}
+        {/* Reviews */}
         <div className="mt-16 md:mt-20">
           <h2 className="text-2xl font-black uppercase mb-6">Reviews</h2>
-
           {reviews.length === 0 ? (
-            <p className={`${muted} mb-8`}>No reviews yet. Be the first!</p>
+            <p className={`${muted} mb-8`}>No reviews yet.</p>
           ) : (
             <div className="space-y-4 mb-10">
               {reviews.map(r => (
@@ -305,101 +355,17 @@ export default function ProductDetails() {
                     <p className="text-sm text-[#2c6660]">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</p>
                   </div>
                   {r.comment && <p className={`text-sm ${muted}`}>{r.comment}</p>}
-                  <p className="text-[11px] text-gray-500 mt-2">
-                    {new Date(r.created_at).toLocaleDateString('en-IN')}
-                  </p>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Write Review */}
           <form onSubmit={handleReviewSubmit} className={`${card} border p-5 space-y-4 max-w-lg`}>
             <h3 className="font-bold uppercase text-sm">Write a Review</h3>
             <div>
               <label className={`text-xs font-mono uppercase ${muted}`}>Your Name *</label>
-              <input
-                required
-                value={reviewForm.reviewer_name}
-                onChange={e => setReviewForm({...reviewForm, reviewer_name: e.target.value})}
-                className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
-              />
+              <input required value={reviewForm.reviewer_name} onChange={e => setReviewForm({...reviewForm, reviewer_name: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
             </div>
             <div>
               <label className={`text-xs font-mono uppercase ${muted}`}>Rating *</label>
-              <select
-                value={reviewForm.rating}
-                onChange={e => setReviewForm({...reviewForm, rating: e.target.value})}
-                className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
-              >
-                {[5,4,3,2,1].map(n => (
-                  <option key={n} value={n}>{n} Star{n > 1 ? 's' : ''}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={`text-xs font-mono uppercase ${muted}`}>Comment</label>
-              <textarea
-                value={reviewForm.comment}
-                onChange={e => setReviewForm({...reviewForm, comment: e.target.value})}
-                className={`w-full border p-2 mt-1 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
-                rows={3}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={submittingReview}
-              className="bg-[#2c6660] text-white px-6 py-2 font-mono text-sm uppercase disabled:opacity-50"
-            >
-              {submittingReview ? 'Submitting...' : 'Submit Review'}
-            </button>
-          </form>
-        </div>
-      </section>
-
-      {/* Order Modal */}
-      {showOrderForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className={`${bg} w-full max-w-md p-6 md:p-8 max-h-[90vh] overflow-y-auto`}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-black uppercase">Place Order</h2>
-              <button onClick={() => setShowOrderForm(false)} className="text-sm font-mono hover:underline">Close</button>
-            </div>
-            <div className={`${card} border p-3 text-sm mb-6`}>
-              <p className="font-semibold">{product.name}</p>
-              <p className={muted}>Size: {selectedSize || '—'} · Qty: {orderForm.quantity}</p>
-              <p className="font-mono text-[#2c6660] mt-1">
-                Total: ₹{(product.price * orderForm.quantity).toLocaleString('en-IN')}
-              </p>
-            </div>
-            <form onSubmit={handleOrderSubmit} className="space-y-4">
-              <div>
-                <label className={`text-xs font-mono uppercase ${muted}`}>Full Name *</label>
-                <input required value={orderForm.customer_name} onChange={e => setOrderForm({...orderForm, customer_name: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-              </div>
-              <div>
-                <label className={`text-xs font-mono uppercase ${muted}`}>Email *</label>
-                <input required type="email" value={orderForm.customer_email} onChange={e => setOrderForm({...orderForm, customer_email: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-              </div>
-              <div>
-                <label className={`text-xs font-mono uppercase ${muted}`}>Phone *</label>
-                <input required value={orderForm.customer_phone} onChange={e => setOrderForm({...orderForm, customer_phone: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-              </div>
-              <div>
-                <label className={`text-xs font-mono uppercase ${muted}`}>Delivery Address *</label>
-                <textarea required value={orderForm.address} onChange={e => setOrderForm({...orderForm, address: e.target.value})} className={`w-full border p-2 mt-1 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} rows={3} />
-              </div>
-              <div>
-                <label className={`text-xs font-mono uppercase ${muted}`}>Quantity</label>
-                <input type="number" min="1" max={product.stock || 10} value={orderForm.quantity} onChange={e => setOrderForm({...orderForm, quantity: parseInt(e.target.value) || 1})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-              </div>
-              <button type="submit" disabled={submitting} className="w-full bg-[#2c6660] text-white py-3 font-mono text-sm uppercase tracking-wider disabled:opacity-50 mt-2">
-                {submitting ? 'Processing...' : 'Pay Now'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+              <select value={reviewForm.rating} 
