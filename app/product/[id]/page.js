@@ -12,12 +12,10 @@ export default function ProductDetails() {
   const [showOrderForm, setShowOrderForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [selectedSize, setSelectedSize] = useState('')
+  const [selectedColor, setSelectedColor] = useState('')
+  const [selectedImage, setSelectedImage] = useState(0)
   const [orderForm, setOrderForm] = useState({
-    customer_name: '',
-    customer_email: '',
-    customer_phone: '',
-    address: '',
-    quantity: 1
+    customer_name: '', customer_email: '', customer_phone: '', address: '', quantity: 1
   })
   const [reviews, setReviews] = useState([])
   const [reviewForm, setReviewForm] = useState({ reviewer_name: '', rating: 5, comment: '' })
@@ -26,6 +24,11 @@ export default function ProductDetails() {
   const [user, setUser] = useState(null)
   const [cartLoading, setCartLoading] = useState(false)
   const [wishLoading, setWishLoading] = useState(false)
+  const [coupons, setCoupons] = useState([])
+  const [pincode, setPincode] = useState('')
+  const [pinMsg, setPinMsg] = useState('')
+  const [showSizeGuide, setShowSizeGuide] = useState(false)
+  const [related, setRelated] = useState([])
 
   useEffect(() => {
     const saved = localStorage.getItem('artbit-theme')
@@ -34,8 +37,20 @@ export default function ProductDetails() {
     if (id) {
       fetchProduct()
       fetchReviews()
+      fetchCoupons()
     }
   }, [id])
+
+  // Auto-rotate images every 3s
+  useEffect(() => {
+    if (!product) return
+    const imgs = getImages()
+    if (imgs.length <= 1) return
+    const t = setInterval(() => {
+      setSelectedImage(i => (i + 1) % imgs.length)
+    }, 3500)
+    return () => clearInterval(t)
+  }, [product])
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -48,13 +63,15 @@ export default function ProductDetails() {
     localStorage.setItem('artbit-theme', next ? 'dark' : 'light')
   }
 
-  const fetchProduct = async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('id', id)
-      .single()
+  const getImages = () => {
+    if (!product) return []
+    if (product.images && product.images.length > 0) return product.images
+    if (product.image_url) return [product.image_url]
+    return []
+  }
 
+  const fetchProduct = async () => {
+    const { data, error } = await supabase.from('products').select('*').eq('id', id).single()
     if (error || !data) {
       setProduct(null)
     } else {
@@ -63,6 +80,17 @@ export default function ProductDetails() {
         const sizes = data.sizes.split(',').map(s => s.trim())
         setSelectedSize(sizes[0] || '')
       }
+      if (data.colors) {
+        const cols = data.colors.split(',').map(c => c.trim())
+        setSelectedColor(cols[0] || '')
+      }
+      // related products
+      const { data: rel } = await supabase
+        .from('products')
+        .select('*')
+        .neq('id', id)
+        .limit(4)
+      setRelated(rel || [])
     }
     setLoading(false)
   }
@@ -77,13 +105,19 @@ export default function ProductDetails() {
     setReviews(data || [])
   }
 
+  const fetchCoupons = async () => {
+    const { data } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('is_active', true)
+      .limit(3)
+    setCoupons(data || [])
+  }
+
   const requireLogin = () => {
     if (!user) {
       alert('Please login first')
-      supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.href }
-      })
+      supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })
       return false
     }
     return true
@@ -115,6 +149,14 @@ export default function ProductDetails() {
     setWishLoading(false)
   }
 
+  const checkPincode = () => {
+    if (!pincode || pincode.length < 6) {
+      setPinMsg('Enter a valid 6-digit pincode')
+      return
+    }
+    setPinMsg('Delivery available · Est. 4–7 days · Shipping ₹49 (Free above ₹999)')
+  }
+
   const handleReviewSubmit = async (e) => {
     e.preventDefault()
     setSubmittingReview(true)
@@ -134,15 +176,13 @@ export default function ProductDetails() {
     setSubmittingReview(false)
   }
 
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement('script')
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-      script.onload = () => resolve(true)
-      script.onerror = () => resolve(false)
-      document.body.appendChild(script)
-    })
-  }
+  const loadRazorpayScript = () => new Promise((resolve) => {
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
 
   const handleOrderSubmit = async (e) => {
     e.preventDefault()
@@ -155,11 +195,9 @@ export default function ProductDetails() {
         body: JSON.stringify({ amount: totalAmount })
       })
       const razorpayOrder = await res.json()
-      if (!razorpayOrder.id) throw new Error(razorpayOrder.error || 'Failed to create payment order')
+      if (!razorpayOrder.id) throw new Error(razorpayOrder.error || 'Failed')
 
-      const scriptLoaded = await loadRazorpayScript()
-      if (!scriptLoaded) throw new Error('Razorpay SDK failed to load')
-
+      await loadRazorpayScript()
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: razorpayOrder.amount,
@@ -180,11 +218,8 @@ export default function ProductDetails() {
                 status: 'paid',
                 user_id: user?.id || null
               }])
-              .select()
-              .single()
-
+              .select().single()
             if (orderError) throw orderError
-
             await supabase.from('order_items').insert([{
               order_id: order.id,
               product_id: product.id,
@@ -192,11 +227,10 @@ export default function ProductDetails() {
               price: product.price,
               size: selectedSize
             }])
-
             alert('Payment successful! Order placed.')
             setShowOrderForm(false)
           } catch (err) {
-            alert('Payment done but order save failed: ' + err.message)
+            alert('Order save failed: ' + err.message)
           }
         },
         prefill: {
@@ -218,117 +252,164 @@ export default function ProductDetails() {
   const card = darkMode ? 'bg-[#252522] border-[#f2ede1]/10' : 'bg-white border-[#1b1b18]/15'
   const muted = darkMode ? 'text-gray-400' : 'text-gray-600'
   const iconBtn = `inline-flex items-center justify-center w-10 h-10 border transition ${
-    darkMode
-      ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]'
-      : 'border-[#1b1b18]/25 hover:bg-[#1b1b18] hover:text-[#f2ede1]'
+    darkMode ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]' : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'
   }`
 
   if (loading) {
-    return (
-      <div className={`min-h-screen ${bg} flex items-center justify-center`}>
-        <p className={`font-mono text-sm ${text}`}>Loading...</p>
-      </div>
-    )
+    return <div className={`min-h-screen ${bg} flex items-center justify-center`}><p className={`font-mono text-sm ${text}`}>Loading...</p></div>
   }
-
   if (!product) {
     return (
       <div className={`min-h-screen ${bg} flex flex-col items-center justify-center gap-4`}>
         <p className={`font-mono ${text}`}>Product not found</p>
-        <Link href="/shop" className="text-sm underline">Back to Shop</Link>
+        <Link href="/shop" className="text-sm underline">← Back to Shop</Link>
       </div>
     )
   }
 
+  const images = getImages()
   const sizes = product.sizes ? product.sizes.split(',').map(s => s.trim()) : []
-  const avgRating = reviews.length
-    ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
-    : null
+  const colors = product.colors ? product.colors.split(',').map(c => c.trim()) : []
+  const price = Number(product.price)
+  const compare = product.compare_at_price ? Number(product.compare_at_price) : null
+  const discount = compare && compare > price ? Math.round(((compare - price) / compare) * 100) : null
+  const avgRating = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null
+  const ratingCounts = [5, 4, 3, 2, 1].map(star => ({
+    star,
+    count: reviews.filter(r => r.rating === star).length
+  }))
 
   return (
     <div className={`min-h-screen ${bg} ${text}`}>
       <header className={`border-b ${darkMode ? 'border-[#f2ede1]/15' : 'border-[#1b1b18]/20'} sticky top-0 ${bg} z-50`}>
-        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
-          <Link href="/" className="font-black text-xl uppercase tracking-tight shrink-0">Artbit</Link>
+        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-4 flex items-center justify-between">
+          <Link href="/" className="font-black text-xl uppercase tracking-tight">Artbit</Link>
           <div className="flex items-center gap-2">
-            <Link href="/cart" className={iconBtn} aria-label="Cart" title="Cart">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 6h15l-1.5 9h-12z" />
-                <circle cx="9" cy="20" r="1" fill="currentColor" stroke="none" />
-                <circle cx="18" cy="20" r="1" fill="currentColor" stroke="none" />
-                <path d="M6 6L5 3H2" />
-              </svg>
-            </Link>
-            <Link href="/wishlist" className={iconBtn} aria-label="Wishlist" title="Wishlist">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
-              </svg>
-            </Link>
-            <Link href="/account" className={iconBtn} aria-label="Orders" title="My Orders">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                <path d="M3.3 7L12 12l8.7-5" />
-                <path d="M12 22V12" />
-              </svg>
-            </Link>
-            <Link href="/shop" className={iconBtn} aria-label="Shop" title="Shop">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
-            </Link>
-            <button onClick={toggleTheme} className={iconBtn} aria-label="Theme" title={darkMode ? 'Light' : 'Dark'}>
+            <button onClick={toggleTheme} className={iconBtn} aria-label="Theme">
               {darkMode ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="4" />
-                  <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-                </svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
               ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 14.5A8.5 8.5 0 1 1 9.5 3a7 7 0 0 0 11.5 11.5z" />
-                </svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
               )}
             </button>
+            <Link href="/cart" className={iconBtn} aria-label="Cart">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            </Link>
+            <Link href="/wishlist" className={iconBtn} aria-label="Wishlist">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </Link>
+            <Link href="/account" className={iconBtn} aria-label="Orders">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            </Link>
+            <Link href="/shop" className={iconBtn} aria-label="Shop">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            </Link>
           </div>
         </div>
       </header>
 
-      <section className="max-w-6xl mx-auto px-5 sm:px-6 py-12 md:py-16">
-        <div className="grid md:grid-cols-2 gap-10 md:gap-16">
-          <div className={`aspect-[4/5] ${darkMode ? 'bg-[#2a2a27]' : 'bg-[#e9e1d1]'} relative overflow-hidden border ${darkMode ? 'border-[#f2ede1]/10' : 'border-[#1b1b18]/10'}`}>
-            {product.image_url ? (
-              <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-sm font-mono opacity-50">No image</div>
+      <section className="max-w-6xl mx-auto px-5 sm:px-6 py-8 md:py-12">
+        <div className="grid md:grid-cols-2 gap-8 md:gap-12">
+          {/* Image gallery */}
+          <div className="flex gap-3">
+            {images.length > 1 && (
+              <div className="flex flex-col gap-2 w-16 shrink-0">
+                {images.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedImage(i)}
+                    className={`aspect-square border-2 overflow-hidden ${selectedImage === i ? 'border-[#2c6660]' : darkMode ? 'border-[#f2ede1]/20' : 'border-gray-300'}`}
+                  >
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
             )}
-            {product.tag && (
-              <span className="absolute top-4 left-4 bg-[#1b1b18] text-[#f2ede1] text-[10px] font-mono uppercase tracking-wider px-2.5 py-1">
-                {product.tag}
-              </span>
-            )}
+            <div className={`flex-1 aspect-[4/5] ${darkMode ? 'bg-[#2a2a27]' : 'bg-[#e9e1d1]'} relative overflow-hidden border ${darkMode ? 'border-[#f2ede1]/10' : 'border-[#1b1b18]/10'}`}>
+              {images[selectedImage] ? (
+                <img src={images[selectedImage]} alt={product.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-sm font-mono opacity-50">No image</div>
+              )}
+              {product.tag && (
+                <span className="absolute top-3 left-3 bg-[#1b1b18] text-[#f2ede1] text-[10px] font-mono uppercase px-2 py-1">{product.tag}</span>
+              )}
+              {discount && (
+                <span className="absolute top-3 right-3 bg-[#bd4632] text-white text-[10px] font-mono uppercase px-2 py-1">{discount}% OFF</span>
+              )}
+            </div>
           </div>
 
+          {/* Product info */}
           <div>
-            <h1 className="text-3xl md:text-4xl font-black uppercase leading-tight mb-3">{product.name}</h1>
-            <p className="font-mono text-2xl text-[#2c6660] mb-2">
-              ₹{Number(product.price).toLocaleString('en-IN')}
-            </p>
-            {avgRating && (
-              <p className={`text-sm ${muted} mb-6`}>★ {avgRating} ({reviews.length} reviews)</p>
+            {product.category && (
+              <p className={`text-xs font-mono uppercase ${muted} mb-1`}>{product.category}</p>
             )}
-            {product.description && (
-              <p className={`${muted} leading-relaxed mb-8`}>{product.description}</p>
+            <h1 className="text-2xl md:text-3xl font-black uppercase leading-tight mb-2">{product.name}</h1>
+
+            {avgRating && (
+              <p className={`text-sm ${muted} mb-3`}>
+                ★ {avgRating} · {reviews.length} review{reviews.length !== 1 ? 's' : ''}
+              </p>
             )}
 
+            <div className="flex items-baseline gap-3 mb-1">
+              <span className="font-mono text-2xl text-[#2c6660] font-bold">₹{price.toLocaleString('en-IN')}</span>
+              {compare && compare > price && (
+                <>
+                  <span className={`font-mono text-sm line-through ${muted}`}>₹{compare.toLocaleString('en-IN')}</span>
+                  <span className="text-sm font-semibold text-[#bd4632]">{discount}% off</span>
+                </>
+              )}
+            </div>
+            <p className={`text-xs ${muted} mb-1`}>Inclusive of all taxes</p>
+            {compare && compare > price && (
+              <p className="text-sm text-[#2c6660] mb-4">Get it for as low as ₹{price.toLocaleString('en-IN')}</p>
+            )}
+
+            {product.fabric && (
+              <p className={`text-sm mb-4 ${muted}`}><span className="font-semibold text-current">Fabric:</span> {product.fabric}</p>
+            )}
+
+            {product.description && (
+              <p className={`${muted} text-sm leading-relaxed mb-6`}>{product.description}</p>
+            )}
+
+            {/* Colors */}
+            {colors.length > 0 && (
+              <div className="mb-5">
+                <p className={`text-xs font-mono uppercase ${muted} mb-2`}>Color: {selectedColor}</p>
+                <div className="flex flex-wrap gap-2">
+                  {colors.map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setSelectedColor(c)}
+                      className={`px-3 py-1.5 text-xs font-mono border uppercase ${
+                        selectedColor === c
+                          ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]'
+                          : darkMode ? 'border-[#f2ede1]/30' : 'border-[#1b1b18]/30'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sizes */}
             {sizes.length > 0 && (
-              <div className="mb-6">
-                <p className={`text-xs font-mono uppercase ${muted} mb-2`}>Select Size</p>
+              <div className="mb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className={`text-xs font-mono uppercase ${muted}`}>Size: {selectedSize}</p>
+                  <button onClick={() => setShowSizeGuide(true)} className="text-xs underline font-mono">Size Guide</button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {sizes.map(size => (
                     <button
                       key={size}
                       onClick={() => setSelectedSize(size)}
-                      className={`px-4 py-2 text-sm font-mono border transition ${
+                      className={`w-11 h-11 text-sm font-mono border transition ${
                         selectedSize === size
                           ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]'
                           : darkMode ? 'border-[#f2ede1]/30' : 'border-[#1b1b18]/30'
@@ -341,172 +422,224 @@ export default function ProductDetails() {
               </div>
             )}
 
-            <p className={`text-xs font-mono ${muted} mb-6`}>
+            <p className={`text-xs font-mono ${muted} mb-5`}>
               {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
             </p>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setShowOrderForm(true)}
-                disabled={product.stock <= 0}
-                className="bg-[#1b1b18] text-[#f2ede1] px-6 py-3 font-mono text-sm uppercase tracking-wider border border-[#1b1b18] disabled:opacity-40"
-              >
+            {/* Buttons */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              <button onClick={() => setShowOrderForm(true)} disabled={product.stock <= 0}
+                className="flex-1 min-w-[120px] bg-[#1b1b18] text-[#f2ede1] py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40">
                 Buy Now
               </button>
-              <button
-                onClick={addToCart}
-                disabled={cartLoading || product.stock <= 0}
-                className={`border px-6 py-3 font-mono text-sm uppercase tracking-wider disabled:opacity-40 ${
-                  darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'
-                }`}
-              >
+              <button onClick={addToCart} disabled={cartLoading || product.stock <= 0}
+                className={`flex-1 min-w-[120px] border py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
                 {cartLoading ? '...' : 'Add to Cart'}
               </button>
-              <button
-                onClick={addToWishlist}
-                disabled={wishLoading}
-                className={`border px-6 py-3 font-mono text-sm uppercase tracking-wider disabled:opacity-40 ${
-                  darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'
-                }`}
-              >
+              <button onClick={addToWishlist} disabled={wishLoading}
+                className={`border px-4 py-3.5 font-mono text-xs uppercase disabled:opacity-40 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
                 {wishLoading ? '...' : 'Wishlist'}
               </button>
+            </div>
+
+            {/* Coupons */}
+            {coupons.length > 0 && (
+              <div className={`${card} border p-4 mb-5`}>
+                <p className="text-xs font-mono uppercase mb-2 font-semibold">Available Coupons</p>
+                {coupons.map(c => (
+                  <div key={c.id} className={`text-sm py-1.5 border-b last:border-0 ${darkMode ? 'border-[#f2ede1]/10' : 'border-gray-200'}`}>
+                    <span className="font-mono font-bold text-[#2c6660]">{c.code}</span>
+                    <span className={`ml-2 ${muted}`}>{c.description || (c.discount_percent ? `${c.discount_percent}% off` : `₹${c.discount_amount} off`)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Delivery pin */}
+            <div className={`${card} border p-4 mb-5`}>
+              <p className="text-xs font-mono uppercase mb-2 font-semibold">Delivery</p>
+              <div className="flex gap-2">
+                <input
+                  value={pincode}
+                  onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="Enter pincode"
+                  className={`flex-1 border px-3 py-2 text-sm outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
+                />
+                <button onClick={checkPincode} className="bg-[#2c6660] text-white px-4 py-2 text-xs font-mono uppercase">Check</button>
+              </div>
+              {pinMsg && <p className={`text-xs mt-2 ${muted}`}>{pinMsg}</p>}
+            </div>
+
+            {/* Highlights */}
+            {(product.fit || product.neck || product.sleeve || product.hemline || product.design_note) && (
+              <div className={`${card} border p-4 mb-5`}>
+                <p className="text-xs font-mono uppercase mb-3 font-semibold">Product Highlights</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {product.design_note && <p><span className={muted}>Design:</span> {product.design_note}</p>}
+                  {product.fit && <p><span className={muted}>Fit:</span> {product.fit}</p>}
+                  {product.neck && <p><span className={muted}>Neck:</span> {product.neck}</p>}
+                  {product.sleeve && <p><span className={muted}>Sleeve:</span> {product.sleeve}</p>}
+                  {product.hemline && <p><span className={muted}>Hemline:</span> {product.hemline}</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Return policy */}
+            <div className={`${card} border p-4 mb-5`}>
+              <p className="text-xs font-mono uppercase font-semibold mb-1">7 Day Return & Exchange</p>
+              <p className={`text-xs ${muted}`}>Easy returns up to 7 days of delivery. Exchange available on select pincodes.</p>
+            </div>
+
+            {/* Trust badges */}
+            <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-mono uppercase mb-6">
+              <div className={`${card} border p-3`}>
+                <p className="font-semibold mb-1">100%</p>
+                <p className={muted}>Genuine Product</p>
+              </div>
+              <div className={`${card} border p-3`}>
+                <p className="font-semibold mb-1">100%</p>
+                <p className={muted}>Secure Payment</p>
+              </div>
+              <div className={`${card} border p-3`}>
+                <p className="font-semibold mb-1">Easy</p>
+                <p className={muted}>Return & Refund</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-16 md:mt-20">
-          <h2 className="text-2xl font-black uppercase mb-6">Reviews</h2>
-          {reviews.length === 0 ? (
-            <p className={`${muted} mb-8`}>No reviews yet.</p>
-          ) : (
-            <div className="space-y-4 mb-10">
-              {reviews.map(r => (
-                <div key={r.id} className={`${card} border p-4`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-semibold">{r.reviewer_name}</p>
-                    <p className="text-sm text-[#2c6660]">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</p>
+        {/* Ratings breakdown + Reviews */}
+        <div className="mt-14">
+          <h2 className="text-xl font-black uppercase mb-6">Ratings & Reviews</h2>
+          {reviews.length > 0 && (
+            <div className={`${card} border p-5 mb-8 max-w-md`}>
+              <p className="text-3xl font-bold mb-1">★ {avgRating}</p>
+              <p className={`text-xs ${muted} mb-4`}>{reviews.length} ratings</p>
+              {ratingCounts.map(r => (
+                <div key={r.star} className="flex items-center gap-2 text-xs mb-1">
+                  <span className="w-8">{r.star}★</span>
+                  <div className={`flex-1 h-1.5 ${darkMode ? 'bg-[#333]' : 'bg-gray-200'} rounded`}>
+                    <div
+                      className="h-full bg-[#2c6660] rounded"
+                      style={{ width: reviews.length ? `${(r.count / reviews.length) * 100}%` : '0%' }}
+                    />
                   </div>
-                  {r.comment && <p className={`text-sm ${muted}`}>{r.comment}</p>}
+                  <span className={`w-6 text-right ${muted}`}>{r.count}</span>
                 </div>
               ))}
             </div>
           )}
 
-          <form onSubmit={handleReviewSubmit} className={`${card} border p-5 space-y-4 max-w-lg`}>
+          {reviews.length === 0 ? (
+            <p className={`${muted} mb-6`}>No reviews yet.</p>
+          ) : (
+            <div className="space-y-3 mb-8">
+              {reviews.map(r => (
+                <div key={r.id} className={`${card} border p-4`}>
+                  <div className="flex justify-between mb-1">
+                    <p className="font-semibold text-sm">{r.reviewer_name}</p>
+                    <p className="text-sm text-[#2c6660]">{'★'.repeat(r.rating)}</p>
+                  </div>
+                  {r.comment && <p className={`text-sm ${muted}`}>{r.comment}</p>}
+                  <p className="text-[11px] text-gray-500 mt-1">{new Date(r.created_at).toLocaleDateString('en-IN')}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <form onSubmit={handleReviewSubmit} className={`${card} border p-5 space-y-3 max-w-lg`}>
             <h3 className="font-bold uppercase text-sm">Write a Review</h3>
-            <div>
-              <label className={`text-xs font-mono uppercase ${muted}`}>Your Name *</label>
-              <input
-                required
-                value={reviewForm.reviewer_name}
-                onChange={e => setReviewForm({ ...reviewForm, reviewer_name: e.target.value })}
-                className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
-              />
-            </div>
-            <div>
-              <label className={`text-xs font-mono uppercase ${muted}`}>Rating *</label>
-              <select
-                value={reviewForm.rating}
-                onChange={e => setReviewForm({ ...reviewForm, rating: e.target.value })}
-                className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
-              >
-                <option value={5}>5 Stars</option>
-                <option value={4}>4 Stars</option>
-                <option value={3}>3 Stars</option>
-                <option value={2}>2 Stars</option>
-                <option value={1}>1 Star</option>
-              </select>
-            </div>
-            <div>
-              <label className={`text-xs font-mono uppercase ${muted}`}>Comment</label>
-              <textarea
-                value={reviewForm.comment}
-                onChange={e => setReviewForm({ ...reviewForm, comment: e.target.value })}
-                className={`w-full border p-2 mt-1 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
-                rows={3}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={submittingReview}
-              className="bg-[#2c6660] text-white px-6 py-2 font-mono text-sm uppercase disabled:opacity-50"
-            >
-              {submittingReview ? 'Submitting...' : 'Submit Review'}
+            <input required placeholder="Your name" value={reviewForm.reviewer_name} onChange={e => setReviewForm({...reviewForm, reviewer_name: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
+            <select value={reviewForm.rating} onChange={e => setReviewForm({...reviewForm, rating: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}>
+              {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} Stars</option>)}
+            </select>
+            <textarea placeholder="Comment" value={reviewForm.comment} onChange={e => setReviewForm({...reviewForm, comment: e.target.value})} className={`w-full border p-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} rows={3} />
+            <button type="submit" disabled={submittingReview} className="bg-[#2c6660] text-white px-5 py-2 font-mono text-xs uppercase disabled:opacity-50">
+              {submittingReview ? '...' : 'Submit Review'}
             </button>
           </form>
         </div>
+
+        {/* Frequently bought together */}
+        {related.length > 0 && (
+          <div className="mt-14">
+            <h2 className="text-xl font-black uppercase mb-6">Frequently Bought Together</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {related.map(p => (
+                <Link key={p.id} href={`/product/${p.id}`} className={`${card} border overflow-hidden group`}>
+                  <div className={`aspect-[4/5] ${darkMode ? 'bg-[#2a2a27]' : 'bg-[#e9e1d1]'}`}>
+                    {p.image_url && <img src={p.image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />}
+                  </div>
+                  <div className="p-3">
+                    <p className="font-semibold text-sm truncate">{p.name}</p>
+                    <p className="font-mono text-sm text-[#2c6660]">₹{Number(p.price).toLocaleString('en-IN')}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
+      {/* Size Guide Modal */}
+      {showSizeGuide && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowSizeGuide(false)}>
+          <div className={`${bg} max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between mb-4">
+              <h3 className="font-black uppercase">Size Guide</h3>
+              <button onClick={() => setShowSizeGuide(false)} className="font-mono text-sm">Close</button>
+            </div>
+            {product.size_guide_url ? (
+              <img src={product.size_guide_url} alt="Size guide" className="w-full" />
+            ) : (
+              <div className="text-sm space-y-2">
+                <p className={muted}>Default size chart (inches)</p>
+                <table className="w-full text-left text-xs font-mono border-collapse">
+                  <thead>
+                    <tr className={`border-b ${darkMode ? 'border-[#f2ede1]/20' : 'border-gray-300'}`}>
+                      <th className="py-2">Size</th><th>Chest</th><th>Length</th><th>Shoulder</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      ['S', '36', '26', '16'],
+                      ['M', '38', '27', '17'],
+                      ['L', '40', '28', '18'],
+                      ['XL', '42', '29', '19'],
+                      ['XXL', '44', '30', '20'],
+                    ].map(row => (
+                      <tr key={row[0]} className={`border-b ${darkMode ? 'border-[#f2ede1]/10' : 'border-gray-200'}`}>
+                        {row.map((cell, i) => <td key={i} className="py-2">{cell}</td>)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Order Modal */}
       {showOrderForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className={`${bg} w-full max-w-md p-6 md:p-8 max-h-[90vh] overflow-y-auto`}>
-            <div className="flex items-center justify-between mb-6">
+          <div className={`${bg} w-full max-w-md p-6 max-h-[90vh] overflow-y-auto`}>
+            <div className="flex justify-between mb-6">
               <h2 className="text-xl font-black uppercase">Place Order</h2>
-              <button onClick={() => setShowOrderForm(false)} className="text-sm font-mono hover:underline">Close</button>
+              <button onClick={() => setShowOrderForm(false)} className="text-sm font-mono">Close</button>
             </div>
             <div className={`${card} border p-3 text-sm mb-6`}>
               <p className="font-semibold">{product.name}</p>
-              <p className={muted}>Size: {selectedSize || '-'} · Qty: {orderForm.quantity}</p>
-              <p className="font-mono text-[#2c6660] mt-1">
-                Total: ₹{(product.price * orderForm.quantity).toLocaleString('en-IN')}
-              </p>
+              <p className={muted}>Size: {selectedSize || '—'} · Color: {selectedColor || '—'} · Qty: {orderForm.quantity}</p>
+              <p className="font-mono text-[#2c6660] mt-1">Total: ₹{(price * orderForm.quantity).toLocaleString('en-IN')}</p>
             </div>
             <form onSubmit={handleOrderSubmit} className="space-y-4">
-              <div>
-                <label className={`text-xs font-mono uppercase ${muted}`}>Full Name *</label>
-                <input
-                  required
-                  value={orderForm.customer_name}
-                  onChange={e => setOrderForm({ ...orderForm, customer_name: e.target.value })}
-                  className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
-                />
-              </div>
-              <div>
-                <label className={`text-xs font-mono uppercase ${muted}`}>Email *</label>
-                <input
-                  required
-                  type="email"
-                  value={orderForm.customer_email}
-                  onChange={e => setOrderForm({ ...orderForm, customer_email: e.target.value })}
-                  className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
-                />
-              </div>
-              <div>
-                <label className={`text-xs font-mono uppercase ${muted}`}>Phone *</label>
-                <input
-                  required
-                  value={orderForm.customer_phone}
-                  onChange={e => setOrderForm({ ...orderForm, customer_phone: e.target.value })}
-                  className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
-                />
-              </div>
-              <div>
-                <label className={`text-xs font-mono uppercase ${muted}`}>Delivery Address *</label>
-                <textarea
-                  required
-                  value={orderForm.address}
-                  onChange={e => setOrderForm({ ...orderForm, address: e.target.value })}
-                  className={`w-full border p-2 mt-1 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
-                  rows={3}
-                />
-              </div>
-              <div>
-                <label className={`text-xs font-mono uppercase ${muted}`}>Quantity</label>
-                <input
-                  type="number"
-                  min="1"
-                  max={product.stock || 10}
-                  value={orderForm.quantity}
-                  onChange={e => setOrderForm({ ...orderForm, quantity: parseInt(e.target.value) || 1 })}
-                  className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-[#2c6660] text-white py-3 font-mono text-sm uppercase disabled:opacity-50 mt-2"
-              >
+              <input required placeholder="Full Name *" value={orderForm.customer_name} onChange={e => setOrderForm({...orderForm, customer_name: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
+              <input required type="email" placeholder="Email *" value={orderForm.customer_email} onChange={e => setOrderForm({...orderForm, customer_email: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
+              <input required placeholder="Phone *" value={orderForm.customer_phone} onChange={e => setOrderForm({...orderForm, customer_phone: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
+              <textarea required placeholder="Delivery Address *" value={orderForm.address} onChange={e => setOrderForm({...orderForm, address: e.target.value})} className={`w-full border p-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} rows={3} />
+              <input type="number" min="1" max={product.stock || 10} value={orderForm.quantity} onChange={e => setOrderForm({...orderForm, quantity: parseInt(e.target.value) || 1})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
+              <button type="submit" disabled={submitting} className="w-full bg-[#2c6660] text-white py-3 font-mono text-sm uppercase disabled:opacity-50">
                 {submitting ? 'Processing...' : 'Pay Now'}
               </button>
             </form>
