@@ -33,7 +33,7 @@ export default function AccountPage() {
       .from('orders')
       .select('*')
       .or(`user_id.eq.${user.id},customer_email.eq.${user.email}`)
-      .in('status', ['paid', 'shipped', 'delivered', 'pending'])
+      .in('status', ['paid', 'shipped', 'delivered', 'pending', 'cod'])
       .order('created_at', { ascending: false })
 
     setOrders(data || [])
@@ -47,6 +47,7 @@ export default function AccountPage() {
       shipped: 'Shipped',
       delivered: 'Delivered',
       cancelled: 'Cancelled'
+      cod: 'Cash on Delivery',
     }
     return map[status] || status
   }

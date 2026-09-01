@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 import Link from 'next/link'
 
 export default function ProductDetails() {
   const { id } = useParams()
+  const router = useRouter()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showOrderForm, setShowOrderForm] = useState(false)
@@ -25,9 +26,13 @@ export default function ProductDetails() {
   const [cartLoading, setCartLoading] = useState(false)
   const [wishLoading, setWishLoading] = useState(false)
   const [coupons, setCoupons] = useState([])
+  const [couponCode, setCouponCode] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState(null)
+  const [couponError, setCouponError] = useState('')
   const [pincode, setPincode] = useState('')
   const [pinMsg, setPinMsg] = useState('')
   const [showSizeGuide, setShowSizeGuide] = useState(false)
+  const [showReturnPolicy, setShowReturnPolicy] = useState(false)
   const [related, setRelated] = useState([])
 
   useEffect(() => {
@@ -41,7 +46,6 @@ export default function ProductDetails() {
     }
   }, [id])
 
-  // Auto-rotate images every 3s
   useEffect(() => {
     if (!product) return
     const imgs = getImages()
@@ -55,6 +59,13 @@ export default function ProductDetails() {
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     setUser(user)
+    if (user) {
+      setOrderForm(f => ({
+        ...f,
+        customer_email: user.email || f.customer_email,
+        customer_name: user.user_metadata?.full_name || user.user_metadata?.name || f.customer_name
+      }))
+    }
   }
 
   const toggleTheme = () => {
@@ -84,12 +95,7 @@ export default function ProductDetails() {
         const cols = data.colors.split(',').map(c => c.trim())
         setSelectedColor(cols[0] || '')
       }
-      // related products
-      const { data: rel } = await supabase
-        .from('products')
-        .select('*')
-        .neq('id', id)
-        .limit(4)
+      const { data: rel } = await supabase.from('products').select('*').neq('id', id).limit(4)
       setRelated(rel || [])
     }
     setLoading(false)
@@ -106,11 +112,7 @@ export default function ProductDetails() {
   }
 
   const fetchCoupons = async () => {
-    const { data } = await supabase
-      .from('coupons')
-      .select('*')
-      .eq('is_active', true)
-      .limit(3)
+    const { data } = await supabase.from('coupons').select('*').eq('is_active', true).limit(5)
     setCoupons(data || [])
   }
 
@@ -157,6 +159,48 @@ export default function ProductDetails() {
     setPinMsg('Delivery available · Est. 4–7 days · Shipping ₹49 (Free above ₹999)')
   }
 
+  const applyCoupon = async () => {
+    setCouponError('')
+    if (!couponCode.trim()) {
+      setCouponError('Enter a coupon code')
+      return
+    }
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', couponCode.toUpperCase().trim())
+      .eq('is_active', true)
+      .single()
+    if (error || !data) {
+      setAppliedCoupon(null)
+      setCouponError('Invalid or expired coupon')
+      return
+    }
+    setAppliedCoupon(data)
+    setCouponError('')
+  }
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null)
+    setCouponCode('')
+    setCouponError('')
+  }
+
+  const calcTotals = () => {
+    const price = Number(product?.price || 0)
+    const qty = orderForm.quantity || 1
+    const subtotal = price * qty
+    let discount = 0
+    if (appliedCoupon) {
+      if (appliedCoupon.discount_percent) {
+        discount = Math.round(subtotal * (appliedCoupon.discount_percent / 100))
+      } else {
+        discount = appliedCoupon.discount_amount || 0
+      }
+    }
+    return { subtotal, discount, total: Math.max(0, subtotal - discount) }
+  }
+
   const handleReviewSubmit = async (e) => {
     e.preventDefault()
     setSubmittingReview(true)
@@ -184,15 +228,41 @@ export default function ProductDetails() {
     document.body.appendChild(script)
   })
 
-  const handleOrderSubmit = async (e) => {
+  const saveOrder = async (status, totalAmount) => {
+    const { data: order, error } = await supabase
+      .from('orders')
+      .insert([{
+        customer_name: orderForm.customer_name,
+        customer_email: orderForm.customer_email,
+        customer_phone: orderForm.customer_phone,
+        address: orderForm.address,
+        total_amount: totalAmount,
+        status,
+        user_id: user?.id || null,
+        tracking_note: appliedCoupon ? `Coupon: ${appliedCoupon.code}` : null
+      }])
+      .select()
+      .single()
+    if (error) throw error
+    await supabase.from('order_items').insert([{
+      order_id: order.id,
+      product_id: product.id,
+      quantity: orderForm.quantity,
+      price: product.price,
+      size: selectedSize
+    }])
+    return order
+  }
+
+  const handlePayOnline = async (e) => {
     e.preventDefault()
     setSubmitting(true)
+    const { total } = calcTotals()
     try {
-      const totalAmount = product.price * orderForm.quantity
       const res = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: totalAmount })
+        body: JSON.stringify({ amount: total })
       })
       const razorpayOrder = await res.json()
       if (!razorpayOrder.id) throw new Error(razorpayOrder.error || 'Failed')
@@ -201,34 +271,16 @@ export default function ProductDetails() {
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
+        currency: razorpayOrder.currency || 'INR',
         name: 'Artbit',
         description: product.name,
         order_id: razorpayOrder.id,
         handler: async function () {
           try {
-            const { data: order, error: orderError } = await supabase
-              .from('orders')
-              .insert([{
-                customer_name: orderForm.customer_name,
-                customer_email: orderForm.customer_email,
-                customer_phone: orderForm.customer_phone,
-                address: orderForm.address,
-                total_amount: totalAmount,
-                status: 'paid',
-                user_id: user?.id || null
-              }])
-              .select().single()
-            if (orderError) throw orderError
-            await supabase.from('order_items').insert([{
-              order_id: order.id,
-              product_id: product.id,
-              quantity: orderForm.quantity,
-              price: product.price,
-              size: selectedSize
-            }])
+            await saveOrder('paid', total)
             alert('Payment successful! Order placed.')
             setShowOrderForm(false)
+            router.push('/account')
           } catch (err) {
             alert('Order save failed: ' + err.message)
           }
@@ -241,6 +293,22 @@ export default function ProductDetails() {
         theme: { color: '#2c6660' }
       }
       new window.Razorpay(options).open()
+    } catch (err) {
+      alert('Error: ' + err.message)
+    }
+    setSubmitting(false)
+  }
+
+  const handleCOD = async (e) => {
+    e.preventDefault()
+    if (!confirm('Place order with Cash on Delivery?')) return
+    setSubmitting(true)
+    const { total } = calcTotals()
+    try {
+      await saveOrder('cod', total)
+      alert('COD order placed! Pay when you receive the product.')
+      setShowOrderForm(false)
+      router.push('/account')
     } catch (err) {
       alert('Error: ' + err.message)
     }
@@ -272,12 +340,13 @@ export default function ProductDetails() {
   const colors = product.colors ? product.colors.split(',').map(c => c.trim()) : []
   const price = Number(product.price)
   const compare = product.compare_at_price ? Number(product.compare_at_price) : null
-  const discount = compare && compare > price ? Math.round(((compare - price) / compare) * 100) : null
+  const discountPct = compare && compare > price ? Math.round(((compare - price) / compare) * 100) : null
   const avgRating = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null
   const ratingCounts = [5, 4, 3, 2, 1].map(star => ({
     star,
     count: reviews.filter(r => r.rating === star).length
   }))
+  const { subtotal, discount: orderDiscount, total: orderTotal } = calcTotals()
 
   return (
     <div className={`min-h-screen ${bg} ${text}`}>
@@ -310,16 +379,11 @@ export default function ProductDetails() {
 
       <section className="max-w-6xl mx-auto px-5 sm:px-6 py-8 md:py-12">
         <div className="grid md:grid-cols-2 gap-8 md:gap-12">
-          {/* Image gallery */}
           <div className="flex gap-3">
             {images.length > 1 && (
               <div className="flex flex-col gap-2 w-16 shrink-0">
                 {images.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedImage(i)}
-                    className={`aspect-square border-2 overflow-hidden ${selectedImage === i ? 'border-[#2c6660]' : darkMode ? 'border-[#f2ede1]/20' : 'border-gray-300'}`}
-                  >
+                  <button key={i} onClick={() => setSelectedImage(i)} className={`aspect-square border-2 overflow-hidden ${selectedImage === i ? 'border-[#2c6660]' : darkMode ? 'border-[#f2ede1]/20' : 'border-gray-300'}`}>
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
@@ -331,73 +395,49 @@ export default function ProductDetails() {
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-sm font-mono opacity-50">No image</div>
               )}
-              {product.tag && (
-                <span className="absolute top-3 left-3 bg-[#1b1b18] text-[#f2ede1] text-[10px] font-mono uppercase px-2 py-1">{product.tag}</span>
-              )}
-              {discount && (
-                <span className="absolute top-3 right-3 bg-[#bd4632] text-white text-[10px] font-mono uppercase px-2 py-1">{discount}% OFF</span>
-              )}
+              {product.tag && <span className="absolute top-3 left-3 bg-[#1b1b18] text-[#f2ede1] text-[10px] font-mono uppercase px-2 py-1">{product.tag}</span>}
+              {discountPct && <span className="absolute top-3 right-3 bg-[#bd4632] text-white text-[10px] font-mono uppercase px-2 py-1">{discountPct}% OFF</span>}
             </div>
           </div>
 
-          {/* Product info */}
           <div>
-            {product.category && (
-              <p className={`text-xs font-mono uppercase ${muted} mb-1`}>{product.category}</p>
-            )}
+            {product.category && <p className={`text-xs font-mono uppercase ${muted} mb-1`}>{product.category}</p>}
             <h1 className="text-2xl md:text-3xl font-black uppercase leading-tight mb-2">{product.name}</h1>
+            {avgRating && <p className={`text-sm ${muted} mb-3`}>★ {avgRating} · {reviews.length} review{reviews.length !== 1 ? 's' : ''}</p>}
 
-            {avgRating && (
-              <p className={`text-sm ${muted} mb-3`}>
-                ★ {avgRating} · {reviews.length} review{reviews.length !== 1 ? 's' : ''}
-              </p>
-            )}
-
-            <div className="flex items-baseline gap-3 mb-1">
+            <div className="flex items-baseline gap-3 mb-1 flex-wrap">
               <span className="font-mono text-2xl text-[#2c6660] font-bold">₹{price.toLocaleString('en-IN')}</span>
               {compare && compare > price && (
                 <>
-                  <span className={`font-mono text-sm line-through ${muted}`}>₹{compare.toLocaleString('en-IN')}</span>
-                  <span className="text-sm font-semibold text-[#bd4632]">{discount}% off</span>
+                  <span className={`font-mono text-base line-through ${muted}`}>₹{compare.toLocaleString('en-IN')}</span>
+                  <span className="text-sm font-semibold text-[#bd4632]">{discountPct}% off</span>
                 </>
               )}
             </div>
             <p className={`text-xs ${muted} mb-1`}>Inclusive of all taxes</p>
             {compare && compare > price && (
-              <p className="text-sm text-[#2c6660] mb-4">Get it for as low as ₹{price.toLocaleString('en-IN')}</p>
+              <p className="text-sm text-[#2c6660] mb-3">Get it for as low as ₹{price.toLocaleString('en-IN')}</p>
+            )}
+            {product.offer_text && (
+              <p className="text-xs font-mono uppercase text-[#bd4632] mb-4">{product.offer_text}</p>
             )}
 
             {product.fabric && (
               <p className={`text-sm mb-4 ${muted}`}><span className="font-semibold text-current">Fabric:</span> {product.fabric}</p>
             )}
+            {product.description && <p className={`${muted} text-sm leading-relaxed mb-6`}>{product.description}</p>}
 
-            {product.description && (
-              <p className={`${muted} text-sm leading-relaxed mb-6`}>{product.description}</p>
-            )}
-
-            {/* Colors */}
             {colors.length > 0 && (
               <div className="mb-5">
                 <p className={`text-xs font-mono uppercase ${muted} mb-2`}>Color: {selectedColor}</p>
                 <div className="flex flex-wrap gap-2">
                   {colors.map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setSelectedColor(c)}
-                      className={`px-3 py-1.5 text-xs font-mono border uppercase ${
-                        selectedColor === c
-                          ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]'
-                          : darkMode ? 'border-[#f2ede1]/30' : 'border-[#1b1b18]/30'
-                      }`}
-                    >
-                      {c}
-                    </button>
+                    <button key={c} onClick={() => setSelectedColor(c)} className={`px-3 py-1.5 text-xs font-mono border uppercase ${selectedColor === c ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]' : darkMode ? 'border-[#f2ede1]/30' : 'border-[#1b1b18]/30'}`}>{c}</button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Sizes */}
             {sizes.length > 0 && (
               <div className="mb-3">
                 <div className="flex items-center justify-between mb-2">
@@ -406,43 +446,20 @@ export default function ProductDetails() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {sizes.map(size => (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`w-11 h-11 text-sm font-mono border transition ${
-                        selectedSize === size
-                          ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]'
-                          : darkMode ? 'border-[#f2ede1]/30' : 'border-[#1b1b18]/30'
-                      }`}
-                    >
-                      {size}
-                    </button>
+                    <button key={size} onClick={() => setSelectedSize(size)} className={`w-11 h-11 text-sm font-mono border transition ${selectedSize === size ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]' : darkMode ? 'border-[#f2ede1]/30' : 'border-[#1b1b18]/30'}`}>{size}</button>
                   ))}
                 </div>
               </div>
             )}
 
-            <p className={`text-xs font-mono ${muted} mb-5`}>
-              {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-            </p>
+            <p className={`text-xs font-mono ${muted} mb-5`}>{product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}</p>
 
-            {/* Buttons */}
             <div className="flex flex-wrap gap-2 mb-6">
-              <button onClick={() => setShowOrderForm(true)} disabled={product.stock <= 0}
-                className="flex-1 min-w-[120px] bg-[#1b1b18] text-[#f2ede1] py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40">
-                Buy Now
-              </button>
-              <button onClick={addToCart} disabled={cartLoading || product.stock <= 0}
-                className={`flex-1 min-w-[120px] border py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
-                {cartLoading ? '...' : 'Add to Cart'}
-              </button>
-              <button onClick={addToWishlist} disabled={wishLoading}
-                className={`border px-4 py-3.5 font-mono text-xs uppercase disabled:opacity-40 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
-                {wishLoading ? '...' : 'Wishlist'}
-              </button>
+              <button onClick={() => setShowOrderForm(true)} disabled={product.stock <= 0} className="flex-1 min-w-[120px] bg-[#1b1b18] text-[#f2ede1] py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40">Buy Now</button>
+              <button onClick={addToCart} disabled={cartLoading || product.stock <= 0} className={`flex-1 min-w-[120px] border py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>{cartLoading ? '...' : 'Add to Cart'}</button>
+              <button onClick={addToWishlist} disabled={wishLoading} className={`border px-4 py-3.5 font-mono text-xs uppercase disabled:opacity-40 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>{wishLoading ? '...' : 'Wishlist'}</button>
             </div>
 
-            {/* Coupons */}
             {coupons.length > 0 && (
               <div className={`${card} border p-4 mb-5`}>
                 <p className="text-xs font-mono uppercase mb-2 font-semibold">Available Coupons</p>
@@ -455,22 +472,15 @@ export default function ProductDetails() {
               </div>
             )}
 
-            {/* Delivery pin */}
             <div className={`${card} border p-4 mb-5`}>
               <p className="text-xs font-mono uppercase mb-2 font-semibold">Delivery</p>
               <div className="flex gap-2">
-                <input
-                  value={pincode}
-                  onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="Enter pincode"
-                  className={`flex-1 border px-3 py-2 text-sm outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}
-                />
+                <input value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Enter pincode" className={`flex-1 border px-3 py-2 text-sm outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
                 <button onClick={checkPincode} className="bg-[#2c6660] text-white px-4 py-2 text-xs font-mono uppercase">Check</button>
               </div>
               {pinMsg && <p className={`text-xs mt-2 ${muted}`}>{pinMsg}</p>}
             </div>
 
-            {/* Highlights */}
             {(product.fit || product.neck || product.sleeve || product.hemline || product.design_note) && (
               <div className={`${card} border p-4 mb-5`}>
                 <p className="text-xs font-mono uppercase mb-3 font-semibold">Product Highlights</p>
@@ -484,31 +494,19 @@ export default function ProductDetails() {
               </div>
             )}
 
-            {/* Return policy */}
-            <div className={`${card} border p-4 mb-5`}>
-              <p className="text-xs font-mono uppercase font-semibold mb-1">7 Day Return & Exchange</p>
-              <p className={`text-xs ${muted}`}>Easy returns up to 7 days of delivery. Exchange available on select pincodes.</p>
-            </div>
+            <button onClick={() => setShowReturnPolicy(true)} className={`${card} border p-4 mb-5 w-full text-left hover:opacity-90 transition`}>
+              <p className="text-xs font-mono uppercase font-semibold mb-1">7 Day Return & Exchange →</p>
+              <p className={`text-xs ${muted}`}>Easy returns up to 7 days of delivery. Click to read full policy.</p>
+            </button>
 
-            {/* Trust badges */}
             <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-mono uppercase mb-6">
-              <div className={`${card} border p-3`}>
-                <p className="font-semibold mb-1">100%</p>
-                <p className={muted}>Genuine Product</p>
-              </div>
-              <div className={`${card} border p-3`}>
-                <p className="font-semibold mb-1">100%</p>
-                <p className={muted}>Secure Payment</p>
-              </div>
-              <div className={`${card} border p-3`}>
-                <p className="font-semibold mb-1">Easy</p>
-                <p className={muted}>Return & Refund</p>
-              </div>
+              <div className={`${card} border p-3`}><p className="font-semibold mb-1">100%</p><p className={muted}>Genuine Product</p></div>
+              <div className={`${card} border p-3`}><p className="font-semibold mb-1">100%</p><p className={muted}>Secure Payment</p></div>
+              <div className={`${card} border p-3`}><p className="font-semibold mb-1">Easy</p><p className={muted}>Return & Refund</p></div>
             </div>
           </div>
         </div>
 
-        {/* Ratings breakdown + Reviews */}
         <div className="mt-14">
           <h2 className="text-xl font-black uppercase mb-6">Ratings & Reviews</h2>
           {reviews.length > 0 && (
@@ -519,17 +517,13 @@ export default function ProductDetails() {
                 <div key={r.star} className="flex items-center gap-2 text-xs mb-1">
                   <span className="w-8">{r.star}★</span>
                   <div className={`flex-1 h-1.5 ${darkMode ? 'bg-[#333]' : 'bg-gray-200'} rounded`}>
-                    <div
-                      className="h-full bg-[#2c6660] rounded"
-                      style={{ width: reviews.length ? `${(r.count / reviews.length) * 100}%` : '0%' }}
-                    />
+                    <div className="h-full bg-[#2c6660] rounded" style={{ width: reviews.length ? `${(r.count / reviews.length) * 100}%` : '0%' }} />
                   </div>
                   <span className={`w-6 text-right ${muted}`}>{r.count}</span>
                 </div>
               ))}
             </div>
           )}
-
           {reviews.length === 0 ? (
             <p className={`${muted} mb-6`}>No reviews yet.</p>
           ) : (
@@ -546,7 +540,6 @@ export default function ProductDetails() {
               ))}
             </div>
           )}
-
           <form onSubmit={handleReviewSubmit} className={`${card} border p-5 space-y-3 max-w-lg`}>
             <h3 className="font-bold uppercase text-sm">Write a Review</h3>
             <input required placeholder="Your name" value={reviewForm.reviewer_name} onChange={e => setReviewForm({...reviewForm, reviewer_name: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
@@ -554,13 +547,10 @@ export default function ProductDetails() {
               {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} Stars</option>)}
             </select>
             <textarea placeholder="Comment" value={reviewForm.comment} onChange={e => setReviewForm({...reviewForm, comment: e.target.value})} className={`w-full border p-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} rows={3} />
-            <button type="submit" disabled={submittingReview} className="bg-[#2c6660] text-white px-5 py-2 font-mono text-xs uppercase disabled:opacity-50">
-              {submittingReview ? '...' : 'Submit Review'}
-            </button>
+            <button type="submit" disabled={submittingReview} className="bg-[#2c6660] text-white px-5 py-2 font-mono text-xs uppercase disabled:opacity-50">{submittingReview ? '...' : 'Submit Review'}</button>
           </form>
         </div>
 
-        {/* Frequently bought together */}
         {related.length > 0 && (
           <div className="mt-14">
             <h2 className="text-xl font-black uppercase mb-6">Frequently Bought Together</h2>
@@ -572,7 +562,12 @@ export default function ProductDetails() {
                   </div>
                   <div className="p-3">
                     <p className="font-semibold text-sm truncate">{p.name}</p>
-                    <p className="font-mono text-sm text-[#2c6660]">₹{Number(p.price).toLocaleString('en-IN')}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="font-mono text-sm text-[#2c6660]">₹{Number(p.price).toLocaleString('en-IN')}</p>
+                      {p.compare_at_price && Number(p.compare_at_price) > Number(p.price) && (
+                        <p className={`font-mono text-xs line-through ${muted}`}>₹{Number(p.compare_at_price).toLocaleString('en-IN')}</p>
+                      )}
+                    </div>
                   </div>
                 </Link>
               ))}
@@ -581,7 +576,6 @@ export default function ProductDetails() {
         )}
       </section>
 
-      {/* Size Guide Modal */}
       {showSizeGuide && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowSizeGuide(false)}>
           <div className={`${bg} max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
@@ -592,35 +586,43 @@ export default function ProductDetails() {
             {product.size_guide_url ? (
               <img src={product.size_guide_url} alt="Size guide" className="w-full" />
             ) : (
-              <div className="text-sm space-y-2">
-                <p className={muted}>Default size chart (inches)</p>
-                <table className="w-full text-left text-xs font-mono border-collapse">
-                  <thead>
-                    <tr className={`border-b ${darkMode ? 'border-[#f2ede1]/20' : 'border-gray-300'}`}>
-                      <th className="py-2">Size</th><th>Chest</th><th>Length</th><th>Shoulder</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      ['S', '36', '26', '16'],
-                      ['M', '38', '27', '17'],
-                      ['L', '40', '28', '18'],
-                      ['XL', '42', '29', '19'],
-                      ['XXL', '44', '30', '20'],
-                    ].map(row => (
-                      <tr key={row[0]} className={`border-b ${darkMode ? 'border-[#f2ede1]/10' : 'border-gray-200'}`}>
-                        {row.map((cell, i) => <td key={i} className="py-2">{cell}</td>)}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <table className="w-full text-left text-xs font-mono">
+                <thead><tr className={`border-b ${darkMode ? 'border-[#f2ede1]/20' : 'border-gray-300'}`}><th className="py-2">Size</th><th>Chest</th><th>Length</th><th>Shoulder</th></tr></thead>
+                <tbody>
+                  {[['S','36','26','16'],['M','38','27','17'],['L','40','28','18'],['XL','42','29','19'],['XXL','44','30','20']].map(row => (
+                    <tr key={row[0]} className={`border-b ${darkMode ? 'border-[#f2ede1]/10' : 'border-gray-200'}`}>{row.map((c,i) => <td key={i} className="py-2">{c}</td>)}</tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         </div>
       )}
 
-      {/* Order Modal */}
+      {showReturnPolicy && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowReturnPolicy(false)}>
+          <div className={`${bg} max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between mb-4">
+              <h3 className="font-black uppercase text-sm">7 Day Return & Exchange Policy</h3>
+              <button onClick={() => setShowReturnPolicy(false)} className="font-mono text-sm">Close</button>
+            </div>
+            <div className={`text-sm space-y-3 leading-relaxed ${muted}`}>
+              <p>You may return or exchange eligible products within <strong className={text}>7 days</strong> of delivery.</p>
+              <p><strong className={text}>Conditions:</strong></p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Product must be unused, unwashed, and in original condition with tags attached.</li>
+                <li>Original packaging should be intact where applicable.</li>
+                <li>Custom / made-to-order prints are non-returnable unless there is a print defect from our side.</li>
+                <li>Exchanges are subject to size availability and select pincodes.</li>
+              </ul>
+              <p><strong className={text}>How to request:</strong> Email artbit.hq@gmail.com with your order number and reason within 7 days of delivery.</p>
+              <p>Approved returns are refunded to the original payment method (or adjusted for COD) within 5–7 business days after we receive the product.</p>
+              <p>Shipping charges for returns may apply unless the return is due to our error (wrong item / print defect).</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showOrderForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className={`${bg} w-full max-w-md p-6 max-h-[90vh] overflow-y-auto`}>
@@ -628,20 +630,50 @@ export default function ProductDetails() {
               <h2 className="text-xl font-black uppercase">Place Order</h2>
               <button onClick={() => setShowOrderForm(false)} className="text-sm font-mono">Close</button>
             </div>
-            <div className={`${card} border p-3 text-sm mb-6`}>
+
+            <div className={`${card} border p-3 text-sm mb-4`}>
               <p className="font-semibold">{product.name}</p>
               <p className={muted}>Size: {selectedSize || '—'} · Color: {selectedColor || '—'} · Qty: {orderForm.quantity}</p>
-              <p className="font-mono text-[#2c6660] mt-1">Total: ₹{(price * orderForm.quantity).toLocaleString('en-IN')}</p>
+              <div className="mt-2 space-y-0.5">
+                <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">₹{subtotal.toLocaleString('en-IN')}</span></div>
+                {appliedCoupon && (
+                  <div className="flex justify-between text-[#2c6660]"><span>Discount ({appliedCoupon.code})</span><span className="font-mono">−₹{orderDiscount.toLocaleString('en-IN')}</span></div>
+                )}
+                <div className="flex justify-between font-semibold"><span>Total</span><span className="font-mono text-[#2c6660]">₹{orderTotal.toLocaleString('en-IN')}</span></div>
+              </div>
             </div>
-            <form onSubmit={handleOrderSubmit} className="space-y-4">
+
+            <div className={`${card} border p-3 mb-4`}>
+              <p className="text-xs font-mono uppercase text-gray-500 mb-2">Coupon Code</p>
+              {appliedCoupon ? (
+                <div className="flex justify-between items-center">
+                  <span className="font-mono text-sm text-[#2c6660] font-bold">{appliedCoupon.code} applied</span>
+                  <button type="button" onClick={removeCoupon} className="text-xs underline text-red-600">Remove</button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="e.g. ARTBIT10" className={`flex-1 border px-2 py-1.5 text-sm outline-none bg-transparent uppercase ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
+                  <button type="button" onClick={applyCoupon} className="bg-[#1b1b18] text-white px-3 py-1.5 text-xs font-mono uppercase">Apply</button>
+                </div>
+              )}
+              {couponError && <p className="text-xs text-red-600 mt-1">{couponError}</p>}
+            </div>
+
+            <form className="space-y-4">
               <input required placeholder="Full Name *" value={orderForm.customer_name} onChange={e => setOrderForm({...orderForm, customer_name: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
               <input required type="email" placeholder="Email *" value={orderForm.customer_email} onChange={e => setOrderForm({...orderForm, customer_email: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
               <input required placeholder="Phone *" value={orderForm.customer_phone} onChange={e => setOrderForm({...orderForm, customer_phone: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
               <textarea required placeholder="Delivery Address *" value={orderForm.address} onChange={e => setOrderForm({...orderForm, address: e.target.value})} className={`w-full border p-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} rows={3} />
               <input type="number" min="1" max={product.stock || 10} value={orderForm.quantity} onChange={e => setOrderForm({...orderForm, quantity: parseInt(e.target.value) || 1})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-              <button type="submit" disabled={submitting} className="w-full bg-[#2c6660] text-white py-3 font-mono text-sm uppercase disabled:opacity-50">
-                {submitting ? 'Processing...' : 'Pay Now'}
-              </button>
+
+              <div className="grid grid-cols-1 gap-2 pt-2">
+                <button type="button" disabled={submitting} onClick={handlePayOnline} className="w-full bg-[#2c6660] text-white py-3 font-mono text-sm uppercase disabled:opacity-50">
+                  {submitting ? 'Processing...' : `Pay Online ₹${orderTotal.toLocaleString('en-IN')}`}
+                </button>
+                <button type="button" disabled={submitting} onClick={handleCOD} className={`w-full border py-3 font-mono text-sm uppercase disabled:opacity-50 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
+                  {submitting ? 'Processing...' : 'Cash on Delivery'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
