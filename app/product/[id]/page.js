@@ -46,15 +46,7 @@ export default function ProductDetails() {
     }
   }, [id])
 
-  useEffect(() => {
-    if (!product) return
-    const imgs = getImages()
-    if (imgs.length <= 1) return
-    const t = setInterval(() => {
-      setSelectedImage(i => (i + 1) % imgs.length)
-    }, 3500)
-    return () => clearInterval(t)
-  }, [product])
+  // ❌ অটো-রোটেট নেই — শুধু ক্লিকে ছবি বদলাবে
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -76,7 +68,7 @@ export default function ProductDetails() {
 
   const getImages = () => {
     if (!product) return []
-    if (product.images && product.images.length > 0) return product.images
+    if (product.images && product.images.length > 0) return product.images.slice(0, 5)
     if (product.image_url) return [product.image_url]
     return []
   }
@@ -87,6 +79,7 @@ export default function ProductDetails() {
       setProduct(null)
     } else {
       setProduct(data)
+      setSelectedImage(0)
       if (data.sizes) {
         const sizes = data.sizes.split(',').map(s => s.trim())
         setSelectedSize(sizes[0] || '')
@@ -228,7 +221,6 @@ export default function ProductDetails() {
     document.body.appendChild(script)
   })
 
-  // payment_method আলাদা সেভ — ship হলেও COD ট্র্যাকিং ঠিক থাকবে
   const saveOrder = async (status, totalAmount, paymentMethod) => {
     const { data: order, error } = await supabase
       .from('orders')
@@ -321,6 +313,7 @@ export default function ProductDetails() {
   const text = darkMode ? 'text-[#f2ede1]' : 'text-[#1b1b18]'
   const card = darkMode ? 'bg-[#252522] border-[#f2ede1]/10' : 'bg-white border-[#1b1b18]/15'
   const muted = darkMode ? 'text-gray-400' : 'text-gray-600'
+  const imgBg = darkMode ? 'bg-[#2a2a27]' : 'bg-[#e9e1d1]'
   const iconBtn = `inline-flex items-center justify-center w-10 h-10 border transition ${
     darkMode ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]' : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'
   }`
@@ -380,61 +373,123 @@ export default function ProductDetails() {
       </header>
 
       <section className="max-w-6xl mx-auto px-5 sm:px-6 py-8 md:py-12">
-        <div className="grid md:grid-cols-2 gap-8 md:gap-12">
-          <div className="flex gap-3">
+        <div className="grid md:grid-cols-2 gap-8 md:gap-10 items-start">
+          {/* Gallery — no auto rotate, aligned, 3:4 ratio */}
+          <div className="flex gap-2 sm:gap-3 items-start w-full">
             {images.length > 1 && (
-              <div className="flex flex-col gap-2 w-16 shrink-0">
+              <div className="flex flex-col gap-2 w-14 sm:w-16 shrink-0">
                 {images.map((img, i) => (
-                  <button key={i} onClick={() => setSelectedImage(i)} className={`aspect-square border-2 overflow-hidden ${selectedImage === i ? 'border-[#2c6660]' : darkMode ? 'border-[#f2ede1]/20' : 'border-gray-300'}`}>
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setSelectedImage(i)}
+                    className={`aspect-[3/4] w-full overflow-hidden border-2 ${
+                      selectedImage === i
+                        ? 'border-[#2c6660]'
+                        : darkMode
+                          ? 'border-[#f2ede1]/20'
+                          : 'border-gray-300'
+                    }`}
+                  >
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
             )}
-            <div className={`flex-1 aspect-[4/5] ${darkMode ? 'bg-[#2a2a27]' : 'bg-[#e9e1d1]'} relative overflow-hidden border ${darkMode ? 'border-[#f2ede1]/10' : 'border-[#1b1b18]/10'}`}>
+            <div
+              className={`relative flex-1 aspect-[3/4] max-h-[min(70vh,560px)] ${imgBg} overflow-hidden border ${
+                darkMode ? 'border-[#f2ede1]/10' : 'border-[#1b1b18]/10'
+              }`}
+            >
               {images[selectedImage] ? (
-                <img src={images[selectedImage]} alt={product.name} className="w-full h-full object-cover" />
+                <img
+                  src={images[selectedImage]}
+                  alt={product.name}
+                  className="w-full h-full object-contain"
+                />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-sm font-mono opacity-50">No image</div>
+                <div className="w-full h-full flex items-center justify-center text-sm font-mono opacity-50">
+                  No image
+                </div>
               )}
-              {product.tag && <span className="absolute top-3 left-3 bg-[#1b1b18] text-[#f2ede1] text-[10px] font-mono uppercase px-2 py-1">{product.tag}</span>}
-              {discountPct && <span className="absolute top-3 right-3 bg-[#bd4632] text-white text-[10px] font-mono uppercase px-2 py-1">{discountPct}% OFF</span>}
+              {product.tag && (
+                <span className="absolute top-3 left-3 bg-[#1b1b18] text-[#f2ede1] text-[10px] font-mono uppercase px-2 py-1 z-10">
+                  {product.tag}
+                </span>
+              )}
+              {discountPct && (
+                <span className="absolute top-3 right-3 bg-[#bd4632] text-white text-[10px] font-mono uppercase px-2 py-1 z-10">
+                  {discountPct}% OFF
+                </span>
+              )}
             </div>
           </div>
 
+          {/* Product info */}
           <div>
-            {product.category && <p className={`text-xs font-mono uppercase ${muted} mb-1`}>{product.category}</p>}
-            <h1 className="text-2xl md:text-3xl font-black uppercase leading-tight mb-2">{product.name}</h1>
-            {avgRating && <p className={`text-sm ${muted} mb-3`}>★ {avgRating} · {reviews.length} review{reviews.length !== 1 ? 's' : ''}</p>}
+            {product.category && (
+              <p className={`text-xs font-mono uppercase ${muted} mb-1`}>{product.category}</p>
+            )}
+            <h1 className="text-2xl md:text-3xl font-black uppercase leading-tight mb-2">
+              {product.name}
+            </h1>
+            {avgRating && (
+              <p className={`text-sm ${muted} mb-3`}>
+                ★ {avgRating} · {reviews.length} review{reviews.length !== 1 ? 's' : ''}
+              </p>
+            )}
 
             <div className="flex items-baseline gap-3 mb-1 flex-wrap">
-              <span className="font-mono text-2xl text-[#2c6660] font-bold">₹{price.toLocaleString('en-IN')}</span>
+              <span className="font-mono text-2xl text-[#2c6660] font-bold">
+                ₹{price.toLocaleString('en-IN')}
+              </span>
               {compare && compare > price && (
                 <>
-                  <span className={`font-mono text-base line-through ${muted}`}>₹{compare.toLocaleString('en-IN')}</span>
+                  <span className={`font-mono text-base line-through ${muted}`}>
+                    ₹{compare.toLocaleString('en-IN')}
+                  </span>
                   <span className="text-sm font-semibold text-[#bd4632]">{discountPct}% off</span>
                 </>
               )}
             </div>
             <p className={`text-xs ${muted} mb-1`}>Inclusive of all taxes</p>
             {compare && compare > price && (
-              <p className="text-sm text-[#2c6660] mb-3">Get it for as low as ₹{price.toLocaleString('en-IN')}</p>
+              <p className="text-sm text-[#2c6660] mb-3">
+                Get it for as low as ₹{price.toLocaleString('en-IN')}
+              </p>
             )}
             {product.offer_text && (
               <p className="text-xs font-mono uppercase text-[#bd4632] mb-4">{product.offer_text}</p>
             )}
 
             {product.fabric && (
-              <p className={`text-sm mb-4 ${muted}`}><span className="font-semibold text-current">Fabric:</span> {product.fabric}</p>
+              <p className={`text-sm mb-4 ${muted}`}>
+                <span className="font-semibold text-current">Fabric:</span> {product.fabric}
+              </p>
             )}
-            {product.description && <p className={`${muted} text-sm leading-relaxed mb-6`}>{product.description}</p>}
+            {product.description && (
+              <p className={`${muted} text-sm leading-relaxed mb-6`}>{product.description}</p>
+            )}
 
             {colors.length > 0 && (
               <div className="mb-5">
                 <p className={`text-xs font-mono uppercase ${muted} mb-2`}>Color: {selectedColor}</p>
                 <div className="flex flex-wrap gap-2">
                   {colors.map(c => (
-                    <button key={c} onClick={() => setSelectedColor(c)} className={`px-3 py-1.5 text-xs font-mono border uppercase ${selectedColor === c ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]' : darkMode ? 'border-[#f2ede1]/30' : 'border-[#1b1b18]/30'}`}>{c}</button>
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setSelectedColor(c)}
+                      className={`px-3 py-1.5 text-xs font-mono border uppercase ${
+                        selectedColor === c
+                          ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]'
+                          : darkMode
+                            ? 'border-[#f2ede1]/30'
+                            : 'border-[#1b1b18]/30'
+                      }`}
+                    >
+                      {c}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -444,31 +499,87 @@ export default function ProductDetails() {
               <div className="mb-3">
                 <div className="flex items-center justify-between mb-2">
                   <p className={`text-xs font-mono uppercase ${muted}`}>Size: {selectedSize}</p>
-                  <button onClick={() => setShowSizeGuide(true)} className="text-xs underline font-mono">Size Guide</button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSizeGuide(true)}
+                    className="text-xs underline font-mono"
+                  >
+                    Size Guide
+                  </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {sizes.map(size => (
-                    <button key={size} onClick={() => setSelectedSize(size)} className={`w-11 h-11 text-sm font-mono border transition ${selectedSize === size ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]' : darkMode ? 'border-[#f2ede1]/30' : 'border-[#1b1b18]/30'}`}>{size}</button>
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setSelectedSize(size)}
+                      className={`w-11 h-11 text-sm font-mono border transition ${
+                        selectedSize === size
+                          ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]'
+                          : darkMode
+                            ? 'border-[#f2ede1]/30'
+                            : 'border-[#1b1b18]/30'
+                      }`}
+                    >
+                      {size}
+                    </button>
                   ))}
                 </div>
               </div>
             )}
 
-            <p className={`text-xs font-mono ${muted} mb-5`}>{product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}</p>
+            <p className={`text-xs font-mono ${muted} mb-5`}>
+              {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+            </p>
 
             <div className="flex flex-wrap gap-2 mb-6">
-              <button onClick={() => setShowOrderForm(true)} disabled={product.stock <= 0} className="flex-1 min-w-[120px] bg-[#1b1b18] text-[#f2ede1] py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40">Buy Now</button>
-              <button onClick={addToCart} disabled={cartLoading || product.stock <= 0} className={`flex-1 min-w-[120px] border py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>{cartLoading ? '...' : 'Add to Cart'}</button>
-              <button onClick={addToWishlist} disabled={wishLoading} className={`border px-4 py-3.5 font-mono text-xs uppercase disabled:opacity-40 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>{wishLoading ? '...' : 'Wishlist'}</button>
+              <button
+                type="button"
+                onClick={() => setShowOrderForm(true)}
+                disabled={product.stock <= 0}
+                className="flex-1 min-w-[120px] bg-[#1b1b18] text-[#f2ede1] py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40"
+              >
+                Buy Now
+              </button>
+              <button
+                type="button"
+                onClick={addToCart}
+                disabled={cartLoading || product.stock <= 0}
+                className={`flex-1 min-w-[120px] border py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40 ${
+                  darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'
+                }`}
+              >
+                {cartLoading ? '...' : 'Add to Cart'}
+              </button>
+              <button
+                type="button"
+                onClick={addToWishlist}
+                disabled={wishLoading}
+                className={`border px-4 py-3.5 font-mono text-xs uppercase disabled:opacity-40 ${
+                  darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'
+                }`}
+              >
+                {wishLoading ? '...' : 'Wishlist'}
+              </button>
             </div>
 
             {coupons.length > 0 && (
               <div className={`${card} border p-4 mb-5`}>
                 <p className="text-xs font-mono uppercase mb-2 font-semibold">Available Coupons</p>
                 {coupons.map(c => (
-                  <div key={c.id} className={`text-sm py-1.5 border-b last:border-0 ${darkMode ? 'border-[#f2ede1]/10' : 'border-gray-200'}`}>
+                  <div
+                    key={c.id}
+                    className={`text-sm py-1.5 border-b last:border-0 ${
+                      darkMode ? 'border-[#f2ede1]/10' : 'border-gray-200'
+                    }`}
+                  >
                     <span className="font-mono font-bold text-[#2c6660]">{c.code}</span>
-                    <span className={`ml-2 ${muted}`}>{c.description || (c.discount_percent ? `${c.discount_percent}% off` : `₹${c.discount_amount} off`)}</span>
+                    <span className={`ml-2 ${muted}`}>
+                      {c.description ||
+                        (c.discount_percent
+                          ? `${c.discount_percent}% off`
+                          : `₹${c.discount_amount} off`)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -477,8 +588,21 @@ export default function ProductDetails() {
             <div className={`${card} border p-4 mb-5`}>
               <p className="text-xs font-mono uppercase mb-2 font-semibold">Delivery</p>
               <div className="flex gap-2">
-                <input value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Enter pincode" className={`flex-1 border px-3 py-2 text-sm outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-                <button onClick={checkPincode} className="bg-[#2c6660] text-white px-4 py-2 text-xs font-mono uppercase">Check</button>
+                <input
+                  value={pincode}
+                  onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="Enter pincode"
+                  className={`flex-1 border px-3 py-2 text-sm outline-none bg-transparent ${
+                    darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={checkPincode}
+                  className="bg-[#2c6660] text-white px-4 py-2 text-xs font-mono uppercase"
+                >
+                  Check
+                </button>
               </div>
               {pinMsg && <p className={`text-xs mt-2 ${muted}`}>{pinMsg}</p>}
             </div>
@@ -487,28 +611,66 @@ export default function ProductDetails() {
               <div className={`${card} border p-4 mb-5`}>
                 <p className="text-xs font-mono uppercase mb-3 font-semibold">Product Highlights</p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  {product.design_note && <p><span className={muted}>Design:</span> {product.design_note}</p>}
-                  {product.fit && <p><span className={muted}>Fit:</span> {product.fit}</p>}
-                  {product.neck && <p><span className={muted}>Neck:</span> {product.neck}</p>}
-                  {product.sleeve && <p><span className={muted}>Sleeve:</span> {product.sleeve}</p>}
-                  {product.hemline && <p><span className={muted}>Hemline:</span> {product.hemline}</p>}
+                  {product.design_note && (
+                    <p>
+                      <span className={muted}>Design:</span> {product.design_note}
+                    </p>
+                  )}
+                  {product.fit && (
+                    <p>
+                      <span className={muted}>Fit:</span> {product.fit}
+                    </p>
+                  )}
+                  {product.neck && (
+                    <p>
+                      <span className={muted}>Neck:</span> {product.neck}
+                    </p>
+                  )}
+                  {product.sleeve && (
+                    <p>
+                      <span className={muted}>Sleeve:</span> {product.sleeve}
+                    </p>
+                  )}
+                  {product.hemline && (
+                    <p>
+                      <span className={muted}>Hemline:</span> {product.hemline}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
 
-            <button onClick={() => setShowReturnPolicy(true)} className={`${card} border p-4 mb-5 w-full text-left hover:opacity-90 transition`}>
-              <p className="text-xs font-mono uppercase font-semibold mb-1">7 Day Return & Exchange →</p>
-              <p className={`text-xs ${muted}`}>Easy returns up to 7 days of delivery. Click to read full policy.</p>
+            <button
+              type="button"
+              onClick={() => setShowReturnPolicy(true)}
+              className={`${card} border p-4 mb-5 w-full text-left hover:opacity-90 transition`}
+            >
+              <p className="text-xs font-mono uppercase font-semibold mb-1">
+                7 Day Return & Exchange →
+              </p>
+              <p className={`text-xs ${muted}`}>
+                Easy returns up to 7 days of delivery. Click to read full policy.
+              </p>
             </button>
 
             <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-mono uppercase mb-6">
-              <div className={`${card} border p-3`}><p className="font-semibold mb-1">100%</p><p className={muted}>Genuine Product</p></div>
-              <div className={`${card} border p-3`}><p className="font-semibold mb-1">100%</p><p className={muted}>Secure Payment</p></div>
-              <div className={`${card} border p-3`}><p className="font-semibold mb-1">Easy</p><p className={muted}>Return & Refund</p></div>
+              <div className={`${card} border p-3`}>
+                <p className="font-semibold mb-1">100%</p>
+                <p className={muted}>Genuine Product</p>
+              </div>
+              <div className={`${card} border p-3`}>
+                <p className="font-semibold mb-1">100%</p>
+                <p className={muted}>Secure Payment</p>
+              </div>
+              <div className={`${card} border p-3`}>
+                <p className="font-semibold mb-1">Easy</p>
+                <p className={muted}>Return & Refund</p>
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Reviews + rest same as before */}
         <div className="mt-14">
           <h2 className="text-xl font-black uppercase mb-6">Ratings & Reviews</h2>
           {reviews.length > 0 && (
@@ -519,7 +681,12 @@ export default function ProductDetails() {
                 <div key={r.star} className="flex items-center gap-2 text-xs mb-1">
                   <span className="w-8">{r.star}★</span>
                   <div className={`flex-1 h-1.5 ${darkMode ? 'bg-[#333]' : 'bg-gray-200'} rounded`}>
-                    <div className="h-full bg-[#2c6660] rounded" style={{ width: reviews.length ? `${(r.count / reviews.length) * 100}%` : '0%' }} />
+                    <div
+                      className="h-full bg-[#2c6660] rounded"
+                      style={{
+                        width: reviews.length ? `${(r.count / reviews.length) * 100}%` : '0%'
+                      }}
+                    />
                   </div>
                   <span className={`w-6 text-right ${muted}`}>{r.count}</span>
                 </div>
@@ -537,19 +704,53 @@ export default function ProductDetails() {
                     <p className="text-sm text-[#2c6660]">{'★'.repeat(r.rating)}</p>
                   </div>
                   {r.comment && <p className={`text-sm ${muted}`}>{r.comment}</p>}
-                  <p className="text-[11px] text-gray-500 mt-1">{new Date(r.created_at).toLocaleDateString('en-IN')}</p>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    {new Date(r.created_at).toLocaleDateString('en-IN')}
+                  </p>
                 </div>
               ))}
             </div>
           )}
           <form onSubmit={handleReviewSubmit} className={`${card} border p-5 space-y-3 max-w-lg`}>
             <h3 className="font-bold uppercase text-sm">Write a Review</h3>
-            <input required placeholder="Your name" value={reviewForm.reviewer_name} onChange={e => setReviewForm({...reviewForm, reviewer_name: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-            <select value={reviewForm.rating} onChange={e => setReviewForm({...reviewForm, rating: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}>
-              {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} Stars</option>)}
+            <input
+              required
+              placeholder="Your name"
+              value={reviewForm.reviewer_name}
+              onChange={e => setReviewForm({ ...reviewForm, reviewer_name: e.target.value })}
+              className={`w-full border-b py-2 outline-none bg-transparent text-sm ${
+                darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'
+              }`}
+            />
+            <select
+              value={reviewForm.rating}
+              onChange={e => setReviewForm({ ...reviewForm, rating: e.target.value })}
+              className={`w-full border-b py-2 outline-none bg-transparent text-sm ${
+                darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'
+              }`}
+            >
+              {[5, 4, 3, 2, 1].map(n => (
+                <option key={n} value={n}>
+                  {n} Stars
+                </option>
+              ))}
             </select>
-            <textarea placeholder="Comment" value={reviewForm.comment} onChange={e => setReviewForm({...reviewForm, comment: e.target.value})} className={`w-full border p-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} rows={3} />
-            <button type="submit" disabled={submittingReview} className="bg-[#2c6660] text-white px-5 py-2 font-mono text-xs uppercase disabled:opacity-50">{submittingReview ? '...' : 'Submit Review'}</button>
+            <textarea
+              placeholder="Comment"
+              value={reviewForm.comment}
+              onChange={e => setReviewForm({ ...reviewForm, comment: e.target.value })}
+              className={`w-full border p-2 outline-none bg-transparent text-sm ${
+                darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'
+              }`}
+              rows={3}
+            />
+            <button
+              type="submit"
+              disabled={submittingReview}
+              className="bg-[#2c6660] text-white px-5 py-2 font-mono text-xs uppercase disabled:opacity-50"
+            >
+              {submittingReview ? '...' : 'Submit Review'}
+            </button>
           </form>
         </div>
 
@@ -559,15 +760,25 @@ export default function ProductDetails() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {related.map(p => (
                 <Link key={p.id} href={`/product/${p.id}`} className={`${card} border overflow-hidden group`}>
-                  <div className={`aspect-[4/5] ${darkMode ? 'bg-[#2a2a27]' : 'bg-[#e9e1d1]'}`}>
-                    {p.image_url && <img src={p.image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />}
+                  <div className={`aspect-[3/4] ${imgBg}`}>
+                    {p.image_url && (
+                      <img
+                        src={p.image_url}
+                        alt=""
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                      />
+                    )}
                   </div>
                   <div className="p-3">
                     <p className="font-semibold text-sm truncate">{p.name}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <p className="font-mono text-sm text-[#2c6660]">₹{Number(p.price).toLocaleString('en-IN')}</p>
+                      <p className="font-mono text-sm text-[#2c6660]">
+                        ₹{Number(p.price).toLocaleString('en-IN')}
+                      </p>
                       {p.compare_at_price && Number(p.compare_at_price) > Number(p.price) && (
-                        <p className={`font-mono text-xs line-through ${muted}`}>₹{Number(p.compare_at_price).toLocaleString('en-IN')}</p>
+                        <p className={`font-mono text-xs line-through ${muted}`}>
+                          ₹{Number(p.compare_at_price).toLocaleString('en-IN')}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -579,47 +790,94 @@ export default function ProductDetails() {
       </section>
 
       {showSizeGuide && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowSizeGuide(false)}>
-          <div className={`${bg} max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowSizeGuide(false)}
+        >
+          <div
+            className={`${bg} max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto`}
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex justify-between mb-4">
               <h3 className="font-black uppercase">Size Guide</h3>
-              <button onClick={() => setShowSizeGuide(false)} className="font-mono text-sm">Close</button>
+              <button type="button" onClick={() => setShowSizeGuide(false)} className="font-mono text-sm">
+                Close
+              </button>
             </div>
-            {product.size_guide_url ? (
-              <img src={product.size_guide_url} alt="Size guide" className="w-full" />
-            ) : (
-              <table className="w-full text-left text-xs font-mono">
-                <thead><tr className={`border-b ${darkMode ? 'border-[#f2ede1]/20' : 'border-gray-300'}`}><th className="py-2">Size</th><th>Chest</th><th>Length</th><th>Shoulder</th></tr></thead>
-                <tbody>
-                  {[['S','36','26','16'],['M','38','27','17'],['L','40','28','18'],['XL','42','29','19'],['XXL','44','30','20']].map(row => (
-                    <tr key={row[0]} className={`border-b ${darkMode ? 'border-[#f2ede1]/10' : 'border-gray-200'}`}>{row.map((c,i) => <td key={i} className="py-2">{c}</td>)}</tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            <table className="w-full text-left text-xs font-mono">
+              <thead>
+                <tr className={`border-b ${darkMode ? 'border-[#f2ede1]/20' : 'border-gray-300'}`}>
+                  <th className="py-2">Size</th>
+                  <th>Chest</th>
+                  <th>Length</th>
+                  <th>Shoulder</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['S', '36', '26', '16'],
+                  ['M', '38', '27', '17'],
+                  ['L', '40', '28', '18'],
+                  ['XL', '42', '29', '19'],
+                  ['XXL', '44', '30', '20']
+                ].map(row => (
+                  <tr
+                    key={row[0]}
+                    className={`border-b ${darkMode ? 'border-[#f2ede1]/10' : 'border-gray-200'}`}
+                  >
+                    {row.map((c, i) => (
+                      <td key={i} className="py-2">
+                        {c}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {showReturnPolicy && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowReturnPolicy(false)}>
-          <div className={`${bg} max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowReturnPolicy(false)}
+        >
+          <div
+            className={`${bg} max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto`}
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex justify-between mb-4">
               <h3 className="font-black uppercase text-sm">7 Day Return & Exchange Policy</h3>
-              <button onClick={() => setShowReturnPolicy(false)} className="font-mono text-sm">Close</button>
+              <button type="button" onClick={() => setShowReturnPolicy(false)} className="font-mono text-sm">
+                Close
+              </button>
             </div>
             <div className={`text-sm space-y-3 leading-relaxed ${muted}`}>
-              <p>You may return or exchange eligible products within <strong className={text}>7 days</strong> of delivery.</p>
-              <p><strong className={text}>Conditions:</strong></p>
+              <p>
+                You may return or exchange eligible products within{' '}
+                <strong className={text}>7 days</strong> of delivery.
+              </p>
+              <p>
+                <strong className={text}>Conditions:</strong>
+              </p>
               <ul className="list-disc pl-5 space-y-1">
                 <li>Product must be unused, unwashed, and in original condition with tags attached.</li>
                 <li>Original packaging should be intact where applicable.</li>
-                <li>Custom / made-to-order prints are non-returnable unless there is a print defect from our side.</li>
+                <li>
+                  Custom / made-to-order prints are non-returnable unless there is a print defect from
+                  our side.
+                </li>
                 <li>Exchanges are subject to size availability and select pincodes.</li>
               </ul>
-              <p><strong className={text}>How to request:</strong> Email artbit.hq@gmail.com with your order number and reason within 7 days of delivery.</p>
-              <p>Approved returns are refunded to the original payment method (or adjusted for COD) within 5–7 business days after we receive the product.</p>
-              <p>Shipping charges for returns may apply unless the return is due to our error (wrong item / print defect).</p>
+              <p>
+                <strong className={text}>How to request:</strong> Email artbit.hq@gmail.com with your
+                order number and reason within 7 days of delivery.
+              </p>
+              <p>
+                Approved returns are refunded to the original payment method (or adjusted for COD)
+                within 5–7 business days after we receive the product.
+              </p>
             </div>
           </div>
         </div>
@@ -630,18 +888,33 @@ export default function ProductDetails() {
           <div className={`${bg} w-full max-w-md p-6 max-h-[90vh] overflow-y-auto`}>
             <div className="flex justify-between mb-6">
               <h2 className="text-xl font-black uppercase">Place Order</h2>
-              <button onClick={() => setShowOrderForm(false)} className="text-sm font-mono">Close</button>
+              <button type="button" onClick={() => setShowOrderForm(false)} className="text-sm font-mono">
+                Close
+              </button>
             </div>
 
             <div className={`${card} border p-3 text-sm mb-4`}>
               <p className="font-semibold">{product.name}</p>
-              <p className={muted}>Size: {selectedSize || '—'} · Color: {selectedColor || '—'} · Qty: {orderForm.quantity}</p>
+              <p className={muted}>
+                Size: {selectedSize || '—'} · Color: {selectedColor || '—'} · Qty: {orderForm.quantity}
+              </p>
               <div className="mt-2 space-y-0.5">
-                <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">₹{subtotal.toLocaleString('en-IN')}</span></div>
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span className="font-mono">₹{subtotal.toLocaleString('en-IN')}</span>
+                </div>
                 {appliedCoupon && (
-                  <div className="flex justify-between text-[#2c6660]"><span>Discount ({appliedCoupon.code})</span><span className="font-mono">−₹{orderDiscount.toLocaleString('en-IN')}</span></div>
+                  <div className="flex justify-between text-[#2c6660]">
+                    <span>Discount ({appliedCoupon.code})</span>
+                    <span className="font-mono">−₹{orderDiscount.toLocaleString('en-IN')}</span>
+                  </div>
                 )}
-                <div className="flex justify-between font-semibold"><span>Total</span><span className="font-mono text-[#2c6660]">₹{orderTotal.toLocaleString('en-IN')}</span></div>
+                <div className="flex justify-between font-semibold">
+                  <span>Total</span>
+                  <span className="font-mono text-[#2c6660]">
+                    ₹{orderTotal.toLocaleString('en-IN')}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -649,30 +922,104 @@ export default function ProductDetails() {
               <p className="text-xs font-mono uppercase text-gray-500 mb-2">Coupon Code</p>
               {appliedCoupon ? (
                 <div className="flex justify-between items-center">
-                  <span className="font-mono text-sm text-[#2c6660] font-bold">{appliedCoupon.code} applied</span>
-                  <button type="button" onClick={removeCoupon} className="text-xs underline text-red-600">Remove</button>
+                  <span className="font-mono text-sm text-[#2c6660] font-bold">
+                    {appliedCoupon.code} applied
+                  </span>
+                  <button type="button" onClick={removeCoupon} className="text-xs underline text-red-600">
+                    Remove
+                  </button>
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <input value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="e.g. ARTBIT10" className={`flex-1 border px-2 py-1.5 text-sm outline-none bg-transparent uppercase ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-                  <button type="button" onClick={applyCoupon} className="bg-[#1b1b18] text-white px-3 py-1.5 text-xs font-mono uppercase">Apply</button>
+                  <input
+                    value={couponCode}
+                    onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. ARTBIT10"
+                    className={`flex-1 border px-2 py-1.5 text-sm outline-none bg-transparent uppercase ${
+                      darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={applyCoupon}
+                    className="bg-[#1b1b18] text-white px-3 py-1.5 text-xs font-mono uppercase"
+                  >
+                    Apply
+                  </button>
                 </div>
               )}
               {couponError && <p className="text-xs text-red-600 mt-1">{couponError}</p>}
             </div>
 
             <form className="space-y-4">
-              <input required placeholder="Full Name *" value={orderForm.customer_name} onChange={e => setOrderForm({...orderForm, customer_name: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-              <input required type="email" placeholder="Email *" value={orderForm.customer_email} onChange={e => setOrderForm({...orderForm, customer_email: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-              <input required placeholder="Phone *" value={orderForm.customer_phone} onChange={e => setOrderForm({...orderForm, customer_phone: e.target.value})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-              <textarea required placeholder="Delivery Address *" value={orderForm.address} onChange={e => setOrderForm({...orderForm, address: e.target.value})} className={`w-full border p-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} rows={3} />
-              <input type="number" min="1" max={product.stock || 10} value={orderForm.quantity} onChange={e => setOrderForm({...orderForm, quantity: parseInt(e.target.value) || 1})} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
+              <input
+                required
+                placeholder="Full Name *"
+                value={orderForm.customer_name}
+                onChange={e => setOrderForm({ ...orderForm, customer_name: e.target.value })}
+                className={`w-full border-b py-2 outline-none bg-transparent ${
+                  darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'
+                }`}
+              />
+              <input
+                required
+                type="email"
+                placeholder="Email *"
+                value={orderForm.customer_email}
+                onChange={e => setOrderForm({ ...orderForm, customer_email: e.target.value })}
+                className={`w-full border-b py-2 outline-none bg-transparent ${
+                  darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'
+                }`}
+              />
+              <input
+                required
+                placeholder="Phone *"
+                value={orderForm.customer_phone}
+                onChange={e => setOrderForm({ ...orderForm, customer_phone: e.target.value })}
+                className={`w-full border-b py-2 outline-none bg-transparent ${
+                  darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'
+                }`}
+              />
+              <textarea
+                required
+                placeholder="Delivery Address *"
+                value={orderForm.address}
+                onChange={e => setOrderForm({ ...orderForm, address: e.target.value })}
+                className={`w-full border p-2 outline-none bg-transparent ${
+                  darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'
+                }`}
+                rows={3}
+              />
+              <input
+                type="number"
+                min="1"
+                max={product.stock || 10}
+                value={orderForm.quantity}
+                onChange={e =>
+                  setOrderForm({ ...orderForm, quantity: parseInt(e.target.value) || 1 })
+                }
+                className={`w-full border-b py-2 outline-none bg-transparent ${
+                  darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'
+                }`}
+              />
 
               <div className="grid grid-cols-1 gap-2 pt-2">
-                <button type="button" disabled={submitting} onClick={handlePayOnline} className="w-full bg-[#2c6660] text-white py-3 font-mono text-sm uppercase disabled:opacity-50">
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={handlePayOnline}
+                  className="w-full bg-[#2c6660] text-white py-3 font-mono text-sm uppercase disabled:opacity-50"
+                >
                   {submitting ? 'Processing...' : `Pay Online ₹${orderTotal.toLocaleString('en-IN')}`}
                 </button>
-                <button type="button" disabled={submitting} onClick={handleCOD} className={`w-full border py-3 font-mono text-sm uppercase disabled:opacity-50 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={handleCOD}
+                  className={`w-full border py-3 font-mono text-sm uppercase disabled:opacity-50 ${
+                    darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'
+                  }`}
+                >
                   {submitting ? 'Processing...' : 'Cash on Delivery'}
                 </button>
               </div>
