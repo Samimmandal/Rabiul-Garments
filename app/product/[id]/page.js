@@ -46,8 +46,6 @@ export default function ProductDetails() {
     }
   }, [id])
 
-  // ❌ অটো-রোটেট নেই — শুধু ক্লিকে ছবি বদলাবে
-
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     setUser(user)
@@ -112,7 +110,10 @@ export default function ProductDetails() {
   const requireLogin = () => {
     if (!user) {
       alert('Please login first')
-      supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })
+      supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.href }
+      })
       return false
     }
     return true
@@ -314,13 +315,18 @@ export default function ProductDetails() {
   const card = darkMode ? 'bg-[#252522] border-[#f2ede1]/10' : 'bg-white border-[#1b1b18]/15'
   const muted = darkMode ? 'text-gray-400' : 'text-gray-600'
   const imgBg = darkMode ? 'bg-[#2a2a27]' : 'bg-[#e9e1d1]'
-  const iconBtn = `inline-flex items-center justify-center w-10 h-10 border transition ${
-    darkMode ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]' : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'
+  const iconCls = `p-1.5 transition opacity-80 hover:opacity-100 ${
+    darkMode ? 'hover:text-[#e2a233]' : 'hover:text-[#2c6660]'
   }`
 
   if (loading) {
-    return <div className={`min-h-screen ${bg} flex items-center justify-center`}><p className={`font-mono text-sm ${text}`}>Loading...</p></div>
+    return (
+      <div className={`min-h-screen ${bg} flex items-center justify-center`}>
+        <p className={`font-mono text-sm ${text}`}>Loading...</p>
+      </div>
+    )
   }
+
   if (!product) {
     return (
       <div className={`min-h-screen ${bg} flex flex-col items-center justify-center gap-4`}>
@@ -336,7 +342,9 @@ export default function ProductDetails() {
   const price = Number(product.price)
   const compare = product.compare_at_price ? Number(product.compare_at_price) : null
   const discountPct = compare && compare > price ? Math.round(((compare - price) / compare) * 100) : null
-  const avgRating = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null
+  const avgRating = reviews.length
+    ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
+    : null
   const ratingCounts = [5, 4, 3, 2, 1].map(star => ({
     star,
     count: reviews.filter(r => r.rating === star).length
@@ -346,44 +354,79 @@ export default function ProductDetails() {
   return (
     <div className={`min-h-screen ${bg} ${text}`}>
       <header className={`border-b ${darkMode ? 'border-[#f2ede1]/15' : 'border-[#1b1b18]/20'} sticky top-0 ${bg} z-50`}>
-        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="font-black text-xl uppercase tracking-tight">Artbit</Link>
-          <div className="flex items-center gap-2">
-            <button onClick={toggleTheme} className={iconBtn} aria-label="Theme">
+        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-3.5 flex items-center justify-between gap-3">
+          <Link href="/" className="shrink-0 flex items-center">
+            <img
+              src="/logo.png"
+              alt="Artbit"
+              className="h-8 sm:h-9 w-auto object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+                const fallback = e.currentTarget.nextSibling
+                if (fallback) fallback.style.display = 'block'
+              }}
+            />
+            <span className="font-black text-xl uppercase tracking-tight" style={{ display: 'none' }}>
+              Artbit
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Link href="/wishlist" className={iconCls} aria-label="Wishlist" title="Wishlist">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+            </Link>
+            <Link href="/cart" className={iconCls} aria-label="Cart" title="Cart">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="21" r="1" />
+                <circle cx="20" cy="21" r="1" />
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+              </svg>
+            </Link>
+            <Link href="/account" className={iconCls} aria-label="My Orders" title="My Orders">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+              </svg>
+            </Link>
+            <Link href="/shop" className={iconCls} aria-label="Shop" title="Shop">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              </svg>
+            </Link>
+            <button onClick={toggleTheme} className={iconCls} aria-label="Theme" title={darkMode ? 'Light' : 'Dark'}>
               {darkMode ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                </svg>
               ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
               )}
             </button>
-            <Link href="/cart" className={iconBtn} aria-label="Cart">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-            </Link>
-            <Link href="/wishlist" className={iconBtn} aria-label="Wishlist">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            </Link>
-            <Link href="/account" className={iconBtn} aria-label="Orders">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-            </Link>
-            <Link href="/shop" className={iconBtn} aria-label="Shop">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-            </Link>
           </div>
         </div>
       </header>
 
       <section className="max-w-6xl mx-auto px-5 sm:px-6 py-8 md:py-12">
         <div className="grid md:grid-cols-2 gap-8 md:gap-10 items-start">
-          {/* Gallery — no auto rotate, aligned, 3:4 ratio */}
-          <div className="flex gap-2 sm:gap-3 items-start w-full">
+          {/* Gallery: thumbs stretch full height — no bottom gap */}
+          <div className="flex gap-2 sm:gap-2.5 w-full" style={{ maxHeight: 'min(72vh, 540px)' }}>
             {images.length > 1 && (
-              <div className="flex flex-col gap-2 w-14 sm:w-16 shrink-0">
+              <div
+                className="flex flex-col gap-1.5 w-12 sm:w-14 shrink-0"
+                style={{ height: 'min(72vh, 540px)' }}
+              >
                 {images.map((img, i) => (
                   <button
                     key={i}
                     type="button"
                     onClick={() => setSelectedImage(i)}
-                    className={`aspect-[3/4] w-full overflow-hidden border-2 ${
+                    className={`flex-1 min-h-0 overflow-hidden border-2 ${
                       selectedImage === i
                         ? 'border-[#2c6660]'
                         : darkMode
@@ -397,9 +440,10 @@ export default function ProductDetails() {
               </div>
             )}
             <div
-              className={`relative flex-1 aspect-[3/4] max-h-[min(70vh,560px)] ${imgBg} overflow-hidden border ${
+              className={`relative flex-1 overflow-hidden border ${imgBg} ${
                 darkMode ? 'border-[#f2ede1]/10' : 'border-[#1b1b18]/10'
               }`}
+              style={{ height: 'min(72vh, 540px)', maxHeight: 'min(72vh, 540px)' }}
             >
               {images[selectedImage] ? (
                 <img
@@ -425,7 +469,6 @@ export default function ProductDetails() {
             </div>
           </div>
 
-          {/* Product info */}
           <div>
             {product.category && (
               <p className={`text-xs font-mono uppercase ${muted} mb-1`}>{product.category}</p>
@@ -607,7 +650,11 @@ export default function ProductDetails() {
               {pinMsg && <p className={`text-xs mt-2 ${muted}`}>{pinMsg}</p>}
             </div>
 
-            {(product.fit || product.neck || product.sleeve || product.hemline || product.design_note) && (
+            {(product.fit ||
+              product.neck ||
+              product.sleeve ||
+              product.hemline ||
+              product.design_note) && (
               <div className={`${card} border p-4 mb-5`}>
                 <p className="text-xs font-mono uppercase mb-3 font-semibold">Product Highlights</p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -670,7 +717,6 @@ export default function ProductDetails() {
           </div>
         </div>
 
-        {/* Reviews + rest same as before */}
         <div className="mt-14">
           <h2 className="text-xl font-black uppercase mb-6">Ratings & Reviews</h2>
           {reviews.length > 0 && (
@@ -759,7 +805,11 @@ export default function ProductDetails() {
             <h2 className="text-xl font-black uppercase mb-6">Frequently Bought Together</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {related.map(p => (
-                <Link key={p.id} href={`/product/${p.id}`} className={`${card} border overflow-hidden group`}>
+                <Link
+                  key={p.id}
+                  href={`/product/${p.id}`}
+                  className={`${card} border overflow-hidden group`}
+                >
                   <div className={`aspect-[3/4] ${imgBg}`}>
                     {p.image_url && (
                       <img
@@ -800,7 +850,11 @@ export default function ProductDetails() {
           >
             <div className="flex justify-between mb-4">
               <h3 className="font-black uppercase">Size Guide</h3>
-              <button type="button" onClick={() => setShowSizeGuide(false)} className="font-mono text-sm">
+              <button
+                type="button"
+                onClick={() => setShowSizeGuide(false)}
+                className="font-mono text-sm"
+              >
                 Close
               </button>
             </div>
@@ -849,7 +903,11 @@ export default function ProductDetails() {
           >
             <div className="flex justify-between mb-4">
               <h3 className="font-black uppercase text-sm">7 Day Return & Exchange Policy</h3>
-              <button type="button" onClick={() => setShowReturnPolicy(false)} className="font-mono text-sm">
+              <button
+                type="button"
+                onClick={() => setShowReturnPolicy(false)}
+                className="font-mono text-sm"
+              >
                 Close
               </button>
             </div>
@@ -858,25 +916,13 @@ export default function ProductDetails() {
                 You may return or exchange eligible products within{' '}
                 <strong className={text}>7 days</strong> of delivery.
               </p>
-              <p>
-                <strong className={text}>Conditions:</strong>
-              </p>
               <ul className="list-disc pl-5 space-y-1">
-                <li>Product must be unused, unwashed, and in original condition with tags attached.</li>
-                <li>Original packaging should be intact where applicable.</li>
-                <li>
-                  Custom / made-to-order prints are non-returnable unless there is a print defect from
-                  our side.
-                </li>
-                <li>Exchanges are subject to size availability and select pincodes.</li>
+                <li>Product must be unused, unwashed, with tags attached.</li>
+                <li>Custom prints are non-returnable unless there is a print defect.</li>
+                <li>Exchanges subject to size availability and select pincodes.</li>
               </ul>
               <p>
-                <strong className={text}>How to request:</strong> Email artbit.hq@gmail.com with your
-                order number and reason within 7 days of delivery.
-              </p>
-              <p>
-                Approved returns are refunded to the original payment method (or adjusted for COD)
-                within 5–7 business days after we receive the product.
+                Email artbit.hq@gmail.com with your order number within 7 days of delivery.
               </p>
             </div>
           </div>
@@ -888,7 +934,11 @@ export default function ProductDetails() {
           <div className={`${bg} w-full max-w-md p-6 max-h-[90vh] overflow-y-auto`}>
             <div className="flex justify-between mb-6">
               <h2 className="text-xl font-black uppercase">Place Order</h2>
-              <button type="button" onClick={() => setShowOrderForm(false)} className="text-sm font-mono">
+              <button
+                type="button"
+                onClick={() => setShowOrderForm(false)}
+                className="text-sm font-mono"
+              >
                 Close
               </button>
             </div>
@@ -896,7 +946,8 @@ export default function ProductDetails() {
             <div className={`${card} border p-3 text-sm mb-4`}>
               <p className="font-semibold">{product.name}</p>
               <p className={muted}>
-                Size: {selectedSize || '—'} · Color: {selectedColor || '—'} · Qty: {orderForm.quantity}
+                Size: {selectedSize || '—'} · Color: {selectedColor || '—'} · Qty:{' '}
+                {orderForm.quantity}
               </p>
               <div className="mt-2 space-y-0.5">
                 <div className="flex justify-between">
@@ -925,7 +976,11 @@ export default function ProductDetails() {
                   <span className="font-mono text-sm text-[#2c6660] font-bold">
                     {appliedCoupon.code} applied
                   </span>
-                  <button type="button" onClick={removeCoupon} className="text-xs underline text-red-600">
+                  <button
+                    type="button"
+                    onClick={removeCoupon}
+                    className="text-xs underline text-red-600"
+                  >
                     Remove
                   </button>
                 </div>
@@ -1010,7 +1065,9 @@ export default function ProductDetails() {
                   onClick={handlePayOnline}
                   className="w-full bg-[#2c6660] text-white py-3 font-mono text-sm uppercase disabled:opacity-50"
                 >
-                  {submitting ? 'Processing...' : `Pay Online ₹${orderTotal.toLocaleString('en-IN')}`}
+                  {submitting
+                    ? 'Processing...'
+                    : `Pay Online ₹${orderTotal.toLocaleString('en-IN')}`}
                 </button>
                 <button
                   type="button"

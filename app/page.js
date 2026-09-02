@@ -72,60 +72,97 @@ export default function HomePage() {
   const border = darkMode ? 'border-[#f2ede1]/15' : 'border-[#1b1b18]/15'
   const cardBg = darkMode ? 'bg-[#252522]' : 'bg-[#f2ede1]'
   const hoverBg = darkMode ? 'hover:bg-[#2a2a27]' : 'hover:bg-[#e9e1d1]'
-  const iconBtn = `inline-flex items-center justify-center w-10 h-10 border transition ${
-    darkMode
-      ? 'border-[#f2ede1]/30 hover:bg-[#f2ede1] hover:text-[#1b1b18]'
-      : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'
+
+  // বক্স ছাড়া আইকন
+  const iconCls = `p-1.5 transition opacity-80 hover:opacity-100 ${
+    darkMode ? 'hover:text-[#e2a233]' : 'hover:text-[#2c6660]'
   }`
 
   return (
     <div className={`min-h-screen ${bg} ${text}`}>
       <header className={`border-b ${border} sticky top-0 ${bg} z-50`}>
-        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="font-black text-xl uppercase tracking-tight">Artbit</Link>
+        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-3.5 flex items-center justify-between gap-3">
+          {/* Logo */}
+          <Link href="/" className="shrink-0 flex items-center">
+            <img
+              src="/logo.png"
+              alt="Artbit"
+              className="h-8 sm:h-9 w-auto object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+                e.currentTarget.nextSibling.style.display = 'block'
+              }}
+            />
+            <span className="font-black text-xl uppercase tracking-tight hidden">Artbit</span>
+          </Link>
+
           <nav className="hidden md:flex gap-7 text-xs font-semibold uppercase tracking-widest">
             <Link href="/shop" className="hover:text-[#2c6660] transition">Shop</Link>
             <a href="#custom" className="hover:text-[#2c6660] transition">Custom Prints</a>
             <a href="#process" className="hover:text-[#2c6660] transition">Process</a>
             <a href="#contact" className="hover:text-[#2c6660] transition">Contact</a>
           </nav>
-          <div className="flex items-center gap-2">
-            {/* Dark / Light */}
-            <button onClick={toggleTheme} className={iconBtn} aria-label="Toggle theme" title={darkMode ? 'Light' : 'Dark'}>
-              {darkMode ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-              )}
-            </button>
-            {/* Cart */}
-            <Link href="/cart" className={iconBtn} aria-label="Cart" title="Cart">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+
+          {/* Icons: Wishlist → Cart → Profile → Orders → Dark */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Link href="/wishlist" className={iconCls} aria-label="Wishlist" title="Wishlist">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
             </Link>
-            {/* Orders */}
-            <Link href="/account" className={iconBtn} aria-label="My Orders" title="My Orders">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+
+            <Link href="/cart" className={iconCls} aria-label="Cart" title="Cart">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="21" r="1" />
+                <circle cx="20" cy="21" r="1" />
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+              </svg>
             </Link>
-            {/* Login / Logout */}
+
             {user ? (
-              <button onClick={handleLogout} className={iconBtn} aria-label="Logout" title="Logout">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <button onClick={handleLogout} className={iconCls} aria-label="Profile / Logout" title="Logout">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
               </button>
             ) : (
-              <button onClick={handleGoogleLogin} className={iconBtn} aria-label="Login" title="Login">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <button onClick={handleGoogleLogin} className={iconCls} aria-label="Login" title="Login">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
               </button>
             )}
-            {/* Admin */}
-            <Link href="/admin/login" className={`${iconBtn} hidden sm:inline-flex`} aria-label="Admin" title="Admin">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+
+            <Link href="/account" className={iconCls} aria-label="My Orders" title="My Orders">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+              </svg>
             </Link>
+
+            <button onClick={toggleTheme} className={iconCls} aria-label="Theme" title={darkMode ? 'Light' : 'Dark'}>
+              {darkMode ? (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                </svg>
+              ) : (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
       </header>
 
       <section className={`max-w-6xl mx-auto px-5 sm:px-6 py-16 md:py-24 border-b ${border}`}>
-        <p className="text-[11px] font-mono uppercase tracking-[0.15em] text-[#2c6660] mb-5">Small-batch screen print house</p>
+        <p className="text-[11px] font-mono uppercase tracking-[0.15em] text-[#2c6660] mb-5">
+          Small-batch screen print house
+        </p>
         <h1 className="text-[clamp(2.8rem,7vw,5.5rem)] font-black uppercase leading-[0.92] tracking-tight">
           Printed by<br />Hand, Worn<br />On Purpose.
         </h1>
@@ -133,8 +170,12 @@ export default function HomePage() {
           Every tee, hoodie and tote passes through our press before it reaches yours — mixed inks, hand-pulled squeegees, zero shortcuts.
         </p>
         <div className="flex flex-wrap gap-3 mt-8">
-          <Link href="/shop" className="bg-[#1b1b18] text-[#f2ede1] px-6 py-3.5 font-mono text-xs uppercase tracking-wider border border-[#1b1b18] hover:opacity-90 transition">Shop the Line</Link>
-          <a href="#custom" className={`border px-6 py-3.5 font-mono text-xs uppercase tracking-wider transition ${darkMode ? 'border-[#f2ede1]/40 hover:bg-[#f2ede1] hover:text-[#1b1b18]' : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'}`}>Start a Custom Order</a>
+          <Link href="/shop" className="bg-[#1b1b18] text-[#f2ede1] px-6 py-3.5 font-mono text-xs uppercase tracking-wider border border-[#1b1b18] hover:opacity-90 transition">
+            Shop the Line
+          </Link>
+          <a href="#custom" className={`border px-6 py-3.5 font-mono text-xs uppercase tracking-wider transition ${darkMode ? 'border-[#f2ede1]/40 hover:bg-[#f2ede1] hover:text-[#1b1b18]' : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'}`}>
+            Start a Custom Order
+          </a>
         </div>
       </section>
 
@@ -146,7 +187,11 @@ export default function HomePage() {
             { num: '03', name: 'Oversized' },
             { num: '04', name: 'Kids' },
           ].map((cat, i) => (
-            <Link key={cat.name} href="/shop" className={`p-6 md:p-8 min-h-[130px] flex flex-col justify-between ${hoverBg} transition ${border} ${i % 2 === 1 ? 'border-l' : ''} ${i >= 2 ? 'border-t md:border-t-0' : ''} md:border-l ${i === 0 ? 'md:border-l-0' : ''}`}>
+            <Link
+              key={cat.name}
+              href="/shop"
+              className={`p-6 md:p-8 min-h-[130px] flex flex-col justify-between ${hoverBg} transition ${border} ${i % 2 === 1 ? 'border-l' : ''} ${i >= 2 ? 'border-t md:border-t-0' : ''} md:border-l ${i === 0 ? 'md:border-l-0' : ''}`}
+            >
               <span className="text-[11px] font-mono text-[#2c6660]">{cat.num}</span>
               <div className="flex items-end justify-between">
                 <h3 className="text-xl font-black uppercase">{cat.name}</h3>
@@ -164,7 +209,9 @@ export default function HomePage() {
               <p className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#2c6660] mb-1">On press this week</p>
               <h2 className="text-3xl md:text-4xl font-black uppercase">Featured Prints</h2>
             </div>
-            <Link href="/shop" className="text-xs font-mono border-b border-current pb-0.5 hover:text-[#2c6660] transition shrink-0">View full catalog →</Link>
+            <Link href="/shop" className="text-xs font-mono border-b border-current pb-0.5 hover:text-[#2c6660] transition shrink-0">
+              View full catalog →
+            </Link>
           </div>
           {loading ? (
             <p className="font-mono text-sm">Loading...</p>
@@ -174,7 +221,7 @@ export default function HomePage() {
             <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px ${darkMode ? 'bg-[#f2ede1]/10' : 'bg-[#1b1b18]/15'} border ${border}`}>
               {products.map(p => (
                 <Link href={`/product/${p.id}`} key={p.id} className={`${cardBg} group block`}>
-                  <div className={`aspect-[4/5] ${darkMode ? 'bg-[#2a2a27]' : 'bg-[#e9e1d1]'} relative overflow-hidden`}>
+                  <div className={`aspect-[3/4] ${darkMode ? 'bg-[#2a2a27]' : 'bg-[#e9e1d1]'} relative overflow-hidden`}>
                     {p.image_url ? (
                       <img src={p.image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                     ) : (
@@ -187,7 +234,12 @@ export default function HomePage() {
                   <div className="p-4">
                     <h3 className="font-semibold text-[15px] mb-1">{p.name}</h3>
                     <p className={`text-xs ${muted} mb-2`}>{p.sizes || 'S · M · L · XL'}</p>
-                    <p className="font-mono text-sm text-[#2c6660]">₹{Number(p.price).toLocaleString('en-IN')}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono text-sm text-[#2c6660]">₹{Number(p.price).toLocaleString('en-IN')}</p>
+                      {p.compare_at_price && Number(p.compare_at_price) > Number(p.price) && (
+                        <p className={`font-mono text-xs line-through ${muted}`}>₹{Number(p.compare_at_price).toLocaleString('en-IN')}</p>
+                      )}
+                    </div>
                   </div>
                 </Link>
               ))}
@@ -200,9 +252,13 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-5 sm:px-6 grid md:grid-cols-2 gap-12 items-center">
           <div>
             <p className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#e2a233] mb-3">Bring your own art</p>
-            <h2 className="text-3xl md:text-5xl font-black uppercase leading-tight mb-5">Design It.<br />We'll Press It.</h2>
-            <p className="text-[#cfc9bb] max-w-md mb-8 leading-relaxed">Upload your artwork or sketch an idea with us — we'll match inks, pick the right garment, and print a sample before the full run ever hits the press.</p>
-            <a href="#contact" className="inline-block bg-[#e2a233] text-[#1b1b18] px-6 py-3.5 font-mono text-xs uppercase tracking-wider hover:bg-[#f2ede1] transition">Start Your Design</a>
+            <h2 className="text-3xl md:text-5xl font-black uppercase leading-tight mb-5">Design It.<br />We&apos;ll Press It.</h2>
+            <p className="text-[#cfc9bb] max-w-md mb-8 leading-relaxed">
+              Upload your artwork or sketch an idea with us — we&apos;ll match inks, pick the right garment, and print a sample before the full run ever hits the press.
+            </p>
+            <a href="#contact" className="inline-block bg-[#e2a233] text-[#1b1b18] px-6 py-3.5 font-mono text-xs uppercase tracking-wider hover:bg-[#f2ede1] transition">
+              Start Your Design
+            </a>
           </div>
           <div className="aspect-square bg-[repeating-linear-gradient(45deg,#2c6660_0_2px,transparent_2px_22px)] bg-[#e9e1d1] relative flex items-center justify-center">
             <span className="bg-[#f2ede1] text-[#1b1b18] px-4 py-2 font-mono text-xs uppercase tracking-wider">Your Art Here</span>
@@ -232,18 +288,20 @@ export default function HomePage() {
 
       <section id="contact" className="py-16 md:py-20">
         <div className="max-w-6xl mx-auto px-5 sm:px-6">
-          <p className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#2c6660] mb-2">Let's talk prints</p>
+          <p className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#2c6660] mb-2">Let&apos;s talk prints</p>
           <h2 className="text-3xl font-black uppercase mb-4">Have a Custom Order in Mind?</h2>
-          <p className={`${muted} max-w-md mb-8 leading-relaxed`}>Tell us about the run — quantity, garment, deadline — and we'll get back with a quote within one business day.</p>
-          <div className="flex flex-wrap items-center gap-3">
-            <a href="https://www.instagram.com/artbit.co.in?igsh=ZHJyNXFhb2VwY2xr" target="_blank" rel="noopener noreferrer" className={iconBtn} aria-label="Instagram">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+          <p className={`${muted} max-w-md mb-8 leading-relaxed`}>
+            Tell us about the run — quantity, garment, deadline — and we&apos;ll get back with a quote within one business day.
+          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <a href="https://www.instagram.com/artbit.co.in?igsh=ZHJyNXFhb2VwY2xr" target="_blank" rel="noopener noreferrer" className={iconCls} aria-label="Instagram">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
             </a>
-            <a href="https://www.facebook.com/share/19Eop63Sz3/" target="_blank" rel="noopener noreferrer" className={iconBtn} aria-label="Facebook">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            <a href="https://www.facebook.com/share/19Eop63Sz3/" target="_blank" rel="noopener noreferrer" className={iconCls} aria-label="Facebook">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
             </a>
-            <a href="mailto:artbit.hq@gmail.com" className={iconBtn} aria-label="Email">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
+            <a href="mailto:artbit.hq@gmail.com" className={iconCls} aria-label="Email">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
             </a>
           </div>
         </div>
@@ -252,7 +310,7 @@ export default function HomePage() {
       <footer className={`border-t ${border} py-10`}>
         <div className="max-w-6xl mx-auto px-5 sm:px-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
-            <span className="font-black text-lg uppercase">Artbit</span>
+            <img src="/logo.png" alt="Artbit" className="h-8 w-auto object-contain" onError={(e) => { e.currentTarget.outerHTML = '<span class="font-black text-lg uppercase">Artbit</span>' }} />
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-mono uppercase tracking-wider">
               <Link href="/page/about" className="hover:text-[#2c6660] transition">About Us</Link>
               <Link href="/page/terms" className="hover:text-[#2c6660] transition">Terms & Conditions</Link>
