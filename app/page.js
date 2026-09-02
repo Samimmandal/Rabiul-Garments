@@ -66,13 +66,13 @@ export default function HomePage() {
     setLoading(false)
   }
 
-  const bg = darkMode ? 'bg-[#1b1b18]' : 'bg-[#f2ede1]'
-  const text = darkMode ? 'text-[#f2ede1]' : 'text-[#1b1b18]'
-  const muted = darkMode ? 'text-gray-400' : 'text-[#4a453d]'
-  const border = darkMode ? 'border-[#f2ede1]/15' : 'border-[#1b1b18]/15'
-  const cardBg = darkMode ? 'bg-[#252522]' : 'bg-[#f2ede1]'
-  const hoverBg = darkMode ? 'hover:bg-[#2a2a27]' : 'hover:bg-[#e9e1d1]'
-  const iconCls = `p-1.5 transition opacity-80 hover:opacity-100 ${
+  const bg = darkMode ? 'bg-[#000000]' : 'bg-[#f2ede1]'
+  const text = darkMode ? 'text-[#ffffff]' : 'text-[#000000]'
+  const muted = darkMode ? 'text-[#cccccc]' : 'text-[#333333]'
+  const border = darkMode ? 'border-[#ffffff]/20' : 'border-[#000000]/15'
+  const cardBg = darkMode ? 'bg-[#0a0a0a]' : 'bg-[#f2ede1]'
+  const hoverBg = darkMode ? 'hover:bg-[#111111]' : 'hover:bg-[#e9e1d1]'
+  const iconCls = `p-1.5 transition opacity-90 hover:opacity-100 ${
     darkMode ? 'hover:text-[#e2a233]' : 'hover:text-[#2c6660]'
   }`
 
@@ -81,7 +81,11 @@ export default function HomePage() {
       <header className={`border-b ${border} sticky top-0 ${bg} z-50`}>
         <div className="max-w-6xl mx-auto px-5 sm:px-6 py-3.5 flex items-center justify-between gap-3">
           <Link href="/" className="shrink-0 flex items-center">
-            <img src="/logo.png" alt="Artbit" className="h-8 sm:h-9 w-auto object-contain" />
+            <img
+              src={darkMode ? '/logo-white.png' : '/logo.png'}
+              alt="Artbit"
+              className="h-8 sm:h-9 w-auto object-contain"
+            />
           </Link>
 
           <nav className="hidden md:flex gap-7 text-xs font-semibold uppercase tracking-widest">
@@ -132,10 +136,10 @@ export default function HomePage() {
           Every tee, hoodie and tote is finished with Direct-to-Film transfer — full-colour detail, soft hand-feel, printed to order in small batches.
         </p>
         <div className="flex flex-wrap gap-3 mt-8">
-          <Link href="/shop" className="bg-[#1b1b18] text-[#f2ede1] px-6 py-3.5 font-mono text-xs uppercase tracking-wider border border-[#1b1b18] hover:opacity-90 transition">
+          <Link href="/shop" className="bg-[#000000] text-[#ffffff] px-6 py-3.5 font-mono text-xs uppercase tracking-wider border border-[#000000] hover:opacity-90 transition">
             Shop the Line
           </Link>
-          <a href="#custom" className={`border px-6 py-3.5 font-mono text-xs uppercase tracking-wider transition ${darkMode ? 'border-[#f2ede1]/40 hover:bg-[#f2ede1] hover:text-[#1b1b18]' : 'border-[#1b1b18] hover:bg-[#1b1b18] hover:text-[#f2ede1]'}`}>
+          <a href="#custom" className={`border px-6 py-3.5 font-mono text-xs uppercase tracking-wider transition ${darkMode ? 'border-[#ffffff]/40 hover:bg-[#ffffff] hover:text-[#000000]' : 'border-[#000000] hover:bg-[#000000] hover:text-[#ffffff]'}`}>
             Start a Custom Order
           </a>
         </div>
@@ -180,17 +184,17 @@ export default function HomePage() {
           ) : products.length === 0 ? (
             <p className={muted}>No featured products yet.</p>
           ) : (
-            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px ${darkMode ? 'bg-[#f2ede1]/10' : 'bg-[#1b1b18]/15'} border ${border}`}>
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px ${darkMode ? 'bg-[#ffffff]/15' : 'bg-[#000000]/15'} border ${border}`}>
               {products.map(p => (
                 <Link href={`/product/${p.id}`} key={p.id} className={`${cardBg} group block`}>
-                  <div className={`aspect-[3/4] ${darkMode ? 'bg-[#2a2a27]' : 'bg-[#e9e1d1]'} relative overflow-hidden`}>
+                  <div className={`aspect-[3/4] ${darkMode ? 'bg-[#111111]' : 'bg-[#e9e1d1]'} relative overflow-hidden`}>
                     {p.image_url ? (
                       <img src={p.image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-xs font-mono opacity-40">No image</div>
                     )}
                     {p.tag && (
-                      <span className="absolute top-3 left-3 bg-[#1b1b18] text-[#f2ede1] text-[10px] font-mono uppercase tracking-wider px-2 py-1">{p.tag}</span>
+                      <span className="absolute top-3 left-3 bg-[#000000] text-[#ffffff] text-[10px] font-mono uppercase tracking-wider px-2 py-1">{p.tag}</span>
                     )}
                   </div>
                   <div className="p-4">
@@ -210,20 +214,20 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="custom" className="bg-[#1b1b18] text-[#f2ede1] py-20 md:py-24">
+      <section id="custom" className="bg-[#000000] text-[#ffffff] py-20 md:py-24">
         <div className="max-w-6xl mx-auto px-5 sm:px-6 grid md:grid-cols-2 gap-12 items-center">
           <div>
             <p className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#e2a233] mb-3">Bring your own art</p>
             <h2 className="text-3xl md:text-5xl font-black uppercase leading-tight mb-5">Design It.<br />We&apos;ll Print It.</h2>
-            <p className="text-[#cfc9bb] max-w-md mb-8 leading-relaxed">
+            <p className="text-[#cccccc] max-w-md mb-8 leading-relaxed">
               Upload your artwork or share an idea — we&apos;ll handle the DTF film, powder and heat press, and send a sample before the full run ships.
             </p>
-            <a href="#contact" className="inline-block bg-[#e2a233] text-[#1b1b18] px-6 py-3.5 font-mono text-xs uppercase tracking-wider hover:bg-[#f2ede1] transition">
+            <a href="#contact" className="inline-block bg-[#e2a233] text-[#000000] px-6 py-3.5 font-mono text-xs uppercase tracking-wider hover:bg-[#ffffff] transition">
               Start Your Design
             </a>
           </div>
           <div className="aspect-square bg-[repeating-linear-gradient(45deg,#2c6660_0_2px,transparent_2px_22px)] bg-[#e9e1d1] relative flex items-center justify-center">
-            <span className="bg-[#f2ede1] text-[#1b1b18] px-4 py-2 font-mono text-xs uppercase tracking-wider">Your Art Here</span>
+            <span className="bg-[#f2ede1] text-[#000000] px-4 py-2 font-mono text-xs uppercase tracking-wider">Your Art Here</span>
           </div>
         </div>
       </section>
@@ -284,7 +288,11 @@ export default function HomePage() {
       <footer className={`border-t ${border} py-10`}>
         <div className="max-w-6xl mx-auto px-5 sm:px-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
-            <img src="/logo.png" alt="Artbit" className="h-8 w-auto object-contain" />
+            <img
+              src={darkMode ? '/logo-white.png' : '/logo.png'}
+              alt="Artbit"
+              className="h-8 w-auto object-contain"
+            />
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-mono uppercase tracking-wider">
               <Link href="/page/about" className="hover:text-[#2c6660] transition">About Us</Link>
               <Link href="/page/terms" className="hover:text-[#2c6660] transition">Terms & Conditions</Link>
@@ -292,7 +300,7 @@ export default function HomePage() {
               <Link href="/page/hiring" className="hover:text-[#2c6660] transition">We Are Hiring</Link>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 text-[11px] font-mono text-gray-500 border-t border-current/10 pt-6">
+          <div className={`flex flex-col sm:flex-row justify-between items-center gap-3 text-[11px] font-mono ${muted} border-t ${border} pt-6`}>
             <span>© 2026 Artbit Print Co. All rights reserved.</span>
             <span>DTF printed to order, batch by batch.</span>
           </div>

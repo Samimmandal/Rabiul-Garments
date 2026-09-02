@@ -328,12 +328,12 @@ export default function ProductDetails() {
     setTouchStart(null)
   }
 
-  const bg = darkMode ? 'bg-[#1b1b18]' : 'bg-[#f2ede1]'
-  const text = darkMode ? 'text-[#f2ede1]' : 'text-[#1b1b18]'
-  const card = darkMode ? 'bg-[#252522] border-[#f2ede1]/10' : 'bg-white border-[#1b1b18]/15'
-  const muted = darkMode ? 'text-gray-400' : 'text-gray-600'
-  const imgBg = darkMode ? 'bg-[#2a2a27]' : 'bg-[#e9e1d1]'
-  const iconCls = `p-1.5 transition opacity-80 hover:opacity-100 ${
+  const bg = darkMode ? 'bg-[#000000]' : 'bg-[#f2ede1]'
+  const text = darkMode ? 'text-[#ffffff]' : 'text-[#000000]'
+  const card = darkMode ? 'bg-[#0a0a0a] border-[#ffffff]/20' : 'bg-white border-[#000000]/15'
+  const muted = darkMode ? 'text-[#cccccc]' : 'text-[#333333]'
+  const imgBg = darkMode ? 'bg-[#111111]' : 'bg-[#e9e1d1]'
+  const iconCls = `p-1.5 transition opacity-90 hover:opacity-100 ${
     darkMode ? 'hover:text-[#e2a233]' : 'hover:text-[#2c6660]'
   }`
 
@@ -370,10 +370,14 @@ export default function ProductDetails() {
 
   return (
     <div className={`min-h-screen ${bg} ${text}`}>
-      <header className={`border-b ${darkMode ? 'border-[#f2ede1]/15' : 'border-[#1b1b18]/20'} sticky top-0 ${bg} z-50`}>
+      <header className={`border-b ${darkMode ? 'border-[#ffffff]/20' : 'border-[#000000]/15'} sticky top-0 ${bg} z-50`}>
         <div className="max-w-6xl mx-auto px-5 sm:px-6 py-3.5 flex items-center justify-between gap-3">
           <Link href="/" className="shrink-0 flex items-center">
-            <img src="/logo.png" alt="Artbit" className="h-8 sm:h-9 w-auto object-contain" />
+            <img
+              src={darkMode ? '/logo-white.png' : '/logo.png'}
+              alt="Artbit"
+              className="h-8 sm:h-9 w-auto object-contain"
+            />
           </Link>
           <div className="flex items-center gap-1 sm:gap-2">
             <Link href="/wishlist" className={iconCls} aria-label="Wishlist" title="Wishlist">
@@ -400,7 +404,7 @@ export default function ProductDetails() {
         <div className="grid md:grid-cols-2 gap-8 md:gap-10 items-start">
           <div>
             <div
-              className={`relative aspect-[3/4] w-full overflow-hidden ${imgBg} border ${darkMode ? 'border-[#f2ede1]/10' : 'border-[#1b1b18]/10'}`}
+              className={`relative aspect-[3/4] w-full overflow-hidden ${imgBg} border ${darkMode ? 'border-[#ffffff]/15' : 'border-[#000000]/10'}`}
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
             >
@@ -410,7 +414,7 @@ export default function ProductDetails() {
                 <div className="w-full h-full flex items-center justify-center text-sm font-mono opacity-50">No image</div>
               )}
               {product.tag && (
-                <span className="absolute top-3 left-3 bg-[#1b1b18] text-[#f2ede1] text-[10px] font-mono uppercase px-2 py-1 z-10">{product.tag}</span>
+                <span className="absolute top-3 left-3 bg-[#000000] text-[#ffffff] text-[10px] font-mono uppercase px-2 py-1 z-10">{product.tag}</span>
               )}
               {discountPct && (
                 <span className="absolute top-3 right-3 bg-[#bd4632] text-white text-[10px] font-mono uppercase px-2 py-1 z-10">{discountPct}% OFF</span>
@@ -430,7 +434,7 @@ export default function ProductDetails() {
                       key={i}
                       type="button"
                       onClick={() => setSelectedImage(i)}
-                      className={`shrink-0 w-16 h-20 overflow-hidden border-2 ${selectedImage === i ? 'border-[#2c6660]' : darkMode ? 'border-[#f2ede1]/20' : 'border-gray-300'}`}
+                      className={`shrink-0 w-16 h-20 overflow-hidden border-2 ${selectedImage === i ? 'border-[#2c6660]' : darkMode ? 'border-[#ffffff]/25' : 'border-gray-300'}`}
                     >
                       <img src={img} alt="" className="w-full h-full object-cover" />
                     </button>
@@ -442,7 +446,7 @@ export default function ProductDetails() {
                       key={i}
                       type="button"
                       onClick={() => setSelectedImage(i)}
-                      className={`h-1.5 rounded-full transition ${selectedImage === i ? 'bg-[#2c6660] w-4' : darkMode ? 'bg-[#f2ede1]/30 w-1.5' : 'bg-gray-400 w-1.5'}`}
+                      className={`h-1.5 rounded-full transition ${selectedImage === i ? 'bg-[#2c6660] w-4' : darkMode ? 'bg-[#ffffff]/30 w-1.5' : 'bg-gray-400 w-1.5'}`}
                       aria-label={`Image ${i + 1}`}
                     />
                   ))}
@@ -475,7 +479,7 @@ export default function ProductDetails() {
                 <p className={`text-xs font-mono uppercase ${muted} mb-2`}>Color: {selectedColor}</p>
                 <div className="flex flex-wrap gap-2">
                   {colors.map(c => (
-                    <button key={c} type="button" onClick={() => setSelectedColor(c)} className={`px-3 py-1.5 text-xs font-mono border uppercase ${selectedColor === c ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]' : darkMode ? 'border-[#f2ede1]/30' : 'border-[#1b1b18]/30'}`}>{c}</button>
+                    <button key={c} type="button" onClick={() => setSelectedColor(c)} className={`px-3 py-1.5 text-xs font-mono border uppercase ${selectedColor === c ? 'bg-[#000000] text-[#ffffff] border-[#000000]' : darkMode ? 'border-[#ffffff]/30' : 'border-[#000000]/30'}`}>{c}</button>
                   ))}
                 </div>
               </div>
@@ -489,7 +493,7 @@ export default function ProductDetails() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {sizes.map(size => (
-                    <button key={size} type="button" onClick={() => setSelectedSize(size)} className={`w-11 h-11 text-sm font-mono border transition ${selectedSize === size ? 'bg-[#1b1b18] text-[#f2ede1] border-[#1b1b18]' : darkMode ? 'border-[#f2ede1]/30' : 'border-[#1b1b18]/30'}`}>{size}</button>
+                    <button key={size} type="button" onClick={() => setSelectedSize(size)} className={`w-11 h-11 text-sm font-mono border transition ${selectedSize === size ? 'bg-[#000000] text-[#ffffff] border-[#000000]' : darkMode ? 'border-[#ffffff]/30' : 'border-[#000000]/30'}`}>{size}</button>
                   ))}
                 </div>
               </div>
@@ -498,16 +502,16 @@ export default function ProductDetails() {
             <p className={`text-xs font-mono ${muted} mb-5`}>{product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}</p>
 
             <div className="flex flex-wrap gap-2 mb-6">
-              <button type="button" onClick={() => setShowOrderForm(true)} disabled={product.stock <= 0} className="flex-1 min-w-[120px] bg-[#1b1b18] text-[#f2ede1] py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40">Buy Now</button>
-              <button type="button" onClick={addToCart} disabled={cartLoading || product.stock <= 0} className={`flex-1 min-w-[120px] border py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>{cartLoading ? '...' : 'Add to Cart'}</button>
-              <button type="button" onClick={addToWishlist} disabled={wishLoading} className={`border px-4 py-3.5 font-mono text-xs uppercase disabled:opacity-40 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>{wishLoading ? '...' : 'Wishlist'}</button>
+              <button type="button" onClick={() => setShowOrderForm(true)} disabled={product.stock <= 0} className="flex-1 min-w-[120px] bg-[#000000] text-[#ffffff] py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40">Buy Now</button>
+              <button type="button" onClick={addToCart} disabled={cartLoading || product.stock <= 0} className={`flex-1 min-w-[120px] border py-3.5 font-mono text-xs uppercase tracking-wider disabled:opacity-40 ${darkMode ? 'border-[#ffffff]/40' : 'border-[#000000]'}`}>{cartLoading ? '...' : 'Add to Cart'}</button>
+              <button type="button" onClick={addToWishlist} disabled={wishLoading} className={`border px-4 py-3.5 font-mono text-xs uppercase disabled:opacity-40 ${darkMode ? 'border-[#ffffff]/40' : 'border-[#000000]'}`}>{wishLoading ? '...' : 'Wishlist'}</button>
             </div>
 
             {coupons.length > 0 && (
               <div className={`${card} border p-4 mb-5`}>
                 <p className="text-xs font-mono uppercase mb-2 font-semibold">Available Coupons</p>
                 {coupons.map(c => (
-                  <div key={c.id} className={`text-sm py-1.5 border-b last:border-0 ${darkMode ? 'border-[#f2ede1]/10' : 'border-gray-200'}`}>
+                  <div key={c.id} className={`text-sm py-1.5 border-b last:border-0 ${darkMode ? 'border-[#ffffff]/10' : 'border-gray-200'}`}>
                     <span className="font-mono font-bold text-[#2c6660]">{c.code}</span>
                     <span className={`ml-2 ${muted}`}>{c.description || (c.discount_percent ? `${c.discount_percent}% off` : `₹${c.discount_amount} off`)}</span>
                   </div>
@@ -518,7 +522,7 @@ export default function ProductDetails() {
             <div className={`${card} border p-4 mb-5`}>
               <p className="text-xs font-mono uppercase mb-2 font-semibold">Delivery</p>
               <div className="flex gap-2">
-                <input value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Enter pincode" className={`flex-1 border px-3 py-2 text-sm outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
+                <input value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Enter pincode" className={`flex-1 border px-3 py-2 text-sm outline-none bg-transparent ${darkMode ? 'border-[#ffffff]/30' : 'border-gray-300'}`} />
                 <button type="button" onClick={checkPincode} className="bg-[#2c6660] text-white px-4 py-2 text-xs font-mono uppercase">Check</button>
               </div>
               {pinMsg && <p className={`text-xs mt-2 ${muted}`}>{pinMsg}</p>}
@@ -559,7 +563,7 @@ export default function ProductDetails() {
               {ratingCounts.map(r => (
                 <div key={r.star} className="flex items-center gap-2 text-xs mb-1">
                   <span className="w-8">{r.star}★</span>
-                  <div className={`flex-1 h-1.5 ${darkMode ? 'bg-[#333]' : 'bg-gray-200'} rounded`}>
+                  <div className={`flex-1 h-1.5 ${darkMode ? 'bg-[#222]' : 'bg-gray-200'} rounded`}>
                     <div className="h-full bg-[#2c6660] rounded" style={{ width: reviews.length ? `${(r.count / reviews.length) * 100}%` : '0%' }} />
                   </div>
                   <span className={`w-6 text-right ${muted}`}>{r.count}</span>
@@ -585,11 +589,11 @@ export default function ProductDetails() {
           )}
           <form onSubmit={handleReviewSubmit} className={`${card} border p-5 space-y-3 max-w-lg`}>
             <h3 className="font-bold uppercase text-sm">Write a Review</h3>
-            <input required placeholder="Your name" value={reviewForm.reviewer_name} onChange={e => setReviewForm({ ...reviewForm, reviewer_name: e.target.value })} className={`w-full border-b py-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-            <select value={reviewForm.rating} onChange={e => setReviewForm({ ...reviewForm, rating: e.target.value })} className={`w-full border-b py-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`}>
+            <input required placeholder="Your name" value={reviewForm.reviewer_name} onChange={e => setReviewForm({ ...reviewForm, reviewer_name: e.target.value })} className={`w-full border-b py-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#ffffff]/30' : 'border-gray-300'}`} />
+            <select value={reviewForm.rating} onChange={e => setReviewForm({ ...reviewForm, rating: e.target.value })} className={`w-full border-b py-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#ffffff]/30' : 'border-gray-300'}`}>
               {[5, 4, 3, 2, 1].map(n => <option key={n} value={n}>{n} Stars</option>)}
             </select>
-            <textarea placeholder="Comment" value={reviewForm.comment} onChange={e => setReviewForm({ ...reviewForm, comment: e.target.value })} className={`w-full border p-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} rows={3} />
+            <textarea placeholder="Comment" value={reviewForm.comment} onChange={e => setReviewForm({ ...reviewForm, comment: e.target.value })} className={`w-full border p-2 outline-none bg-transparent text-sm ${darkMode ? 'border-[#ffffff]/30' : 'border-gray-300'}`} rows={3} />
             <button type="submit" disabled={submittingReview} className="bg-[#2c6660] text-white px-5 py-2 font-mono text-xs uppercase disabled:opacity-50">{submittingReview ? '...' : 'Submit Review'}</button>
           </form>
         </div>
@@ -628,13 +632,13 @@ export default function ProductDetails() {
             </div>
             <table className="w-full text-left text-xs font-mono">
               <thead>
-                <tr className={`border-b ${darkMode ? 'border-[#f2ede1]/20' : 'border-gray-300'}`}>
+                <tr className={`border-b ${darkMode ? 'border-[#ffffff]/20' : 'border-gray-300'}`}>
                   <th className="py-2">Size</th><th>Chest</th><th>Length</th><th>Shoulder</th>
                 </tr>
               </thead>
               <tbody>
                 {[['S','36','26','16'],['M','38','27','17'],['L','40','28','18'],['XL','42','29','19'],['XXL','44','30','20']].map(row => (
-                  <tr key={row[0]} className={`border-b ${darkMode ? 'border-[#f2ede1]/10' : 'border-gray-200'}`}>
+                  <tr key={row[0]} className={`border-b ${darkMode ? 'border-[#ffffff]/10' : 'border-gray-200'}`}>
                     {row.map((c, i) => <td key={i} className="py-2">{c}</td>)}
                   </tr>
                 ))}
@@ -688,23 +692,23 @@ export default function ProductDetails() {
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <input value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="e.g. ARTBIT10" className={`flex-1 border px-2 py-1.5 text-sm outline-none bg-transparent uppercase ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-                  <button type="button" onClick={applyCoupon} className="bg-[#1b1b18] text-white px-3 py-1.5 text-xs font-mono uppercase">Apply</button>
+                  <input value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="e.g. ARTBIT10" className={`flex-1 border px-2 py-1.5 text-sm outline-none bg-transparent uppercase ${darkMode ? 'border-[#ffffff]/30' : 'border-gray-300'}`} />
+                  <button type="button" onClick={applyCoupon} className="bg-[#000000] text-white px-3 py-1.5 text-xs font-mono uppercase">Apply</button>
                 </div>
               )}
               {couponError && <p className="text-xs text-red-600 mt-1">{couponError}</p>}
             </div>
             <form className="space-y-4">
-              <input required placeholder="Full Name *" value={orderForm.customer_name} onChange={e => setOrderForm({ ...orderForm, customer_name: e.target.value })} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-              <input required type="email" placeholder="Email *" value={orderForm.customer_email} onChange={e => setOrderForm({ ...orderForm, customer_email: e.target.value })} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-              <input required placeholder="Phone *" value={orderForm.customer_phone} onChange={e => setOrderForm({ ...orderForm, customer_phone: e.target.value })} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
-              <textarea required placeholder="Delivery Address *" value={orderForm.address} onChange={e => setOrderForm({ ...orderForm, address: e.target.value })} className={`w-full border p-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} rows={3} />
-              <input type="number" min="1" max={product.stock || 10} value={orderForm.quantity} onChange={e => setOrderForm({ ...orderForm, quantity: parseInt(e.target.value) || 1 })} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#f2ede1]/30' : 'border-gray-300'}`} />
+              <input required placeholder="Full Name *" value={orderForm.customer_name} onChange={e => setOrderForm({ ...orderForm, customer_name: e.target.value })} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#ffffff]/30' : 'border-gray-300'}`} />
+              <input required type="email" placeholder="Email *" value={orderForm.customer_email} onChange={e => setOrderForm({ ...orderForm, customer_email: e.target.value })} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#ffffff]/30' : 'border-gray-300'}`} />
+              <input required placeholder="Phone *" value={orderForm.customer_phone} onChange={e => setOrderForm({ ...orderForm, customer_phone: e.target.value })} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#ffffff]/30' : 'border-gray-300'}`} />
+              <textarea required placeholder="Delivery Address *" value={orderForm.address} onChange={e => setOrderForm({ ...orderForm, address: e.target.value })} className={`w-full border p-2 outline-none bg-transparent ${darkMode ? 'border-[#ffffff]/30' : 'border-gray-300'}`} rows={3} />
+              <input type="number" min="1" max={product.stock || 10} value={orderForm.quantity} onChange={e => setOrderForm({ ...orderForm, quantity: parseInt(e.target.value) || 1 })} className={`w-full border-b py-2 outline-none bg-transparent ${darkMode ? 'border-[#ffffff]/30' : 'border-gray-300'}`} />
               <div className="grid grid-cols-1 gap-2 pt-2">
                 <button type="button" disabled={submitting} onClick={handlePayOnline} className="w-full bg-[#2c6660] text-white py-3 font-mono text-sm uppercase disabled:opacity-50">
                   {submitting ? 'Processing...' : `Pay Online ₹${orderTotal.toLocaleString('en-IN')}`}
                 </button>
-                <button type="button" disabled={submitting} onClick={handleCOD} className={`w-full border py-3 font-mono text-sm uppercase disabled:opacity-50 ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}>
+                <button type="button" disabled={submitting} onClick={handleCOD} className={`w-full border py-3 font-mono text-sm uppercase disabled:opacity-50 ${darkMode ? 'border-[#ffffff]/40' : 'border-[#000000]'}`}>
                   {submitting ? 'Processing...' : 'Cash on Delivery'}
                 </button>
               </div>

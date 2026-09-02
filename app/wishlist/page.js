@@ -25,18 +25,12 @@ export default function WishlistPage() {
   const init = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     setUser(user)
-    if (!user) {
-      setLoading(false)
-      return
-    }
+    if (!user) { setLoading(false); return }
     await fetchWishlist(user.id)
   }
 
   const fetchWishlist = async (userId) => {
-    const { data } = await supabase
-      .from('wishlist')
-      .select('*, products(*)')
-      .eq('user_id', userId)
+    const { data } = await supabase.from('wishlist').select('*, products(*)').eq('user_id', userId)
     setItems(data || [])
     setLoading(false)
   }
@@ -57,21 +51,19 @@ export default function WishlistPage() {
     alert('Added to cart!')
   }
 
-  const bg = darkMode ? 'bg-[#1b1b18]' : 'bg-[#f2ede1]'
-  const text = darkMode ? 'text-[#f2ede1]' : 'text-[#1b1b18]'
-  const muted = darkMode ? 'text-gray-400' : 'text-gray-600'
-  const card = darkMode ? 'bg-[#252522] border-[#f2ede1]/10' : 'bg-white border-[#1b1b18]/10'
-  const border = darkMode ? 'border-[#f2ede1]/15' : 'border-[#1b1b18]/15'
-  const iconCls = `p-1.5 transition opacity-80 hover:opacity-100 ${
-    darkMode ? 'hover:text-[#e2a233]' : 'hover:text-[#2c6660]'
-  }`
+  const bg = darkMode ? 'bg-[#000000]' : 'bg-[#f2ede1]'
+  const text = darkMode ? 'text-[#ffffff]' : 'text-[#000000]'
+  const muted = darkMode ? 'text-[#cccccc]' : 'text-[#333333]'
+  const card = darkMode ? 'bg-[#0a0a0a] border-[#ffffff]/20' : 'bg-white border-[#000000]/15'
+  const border = darkMode ? 'border-[#ffffff]/20' : 'border-[#000000]/15'
+  const iconCls = `p-1.5 transition opacity-90 hover:opacity-100 ${darkMode ? 'hover:text-[#e2a233]' : 'hover:text-[#2c6660]'}`
 
   return (
     <div className={`min-h-screen ${bg} ${text}`}>
       <header className={`border-b ${border} sticky top-0 ${bg} z-50`}>
         <div className="max-w-6xl mx-auto px-5 sm:px-6 py-3.5 flex items-center justify-between gap-3">
           <Link href="/" className="shrink-0 flex items-center">
-            <img src="/logo.png" alt="Artbit" className="h-8 sm:h-9 w-auto object-contain" />
+            <img src={darkMode ? '/logo-white.png' : '/logo.png'} alt="Artbit" className="h-8 sm:h-9 w-auto object-contain" />
           </Link>
           <div className="flex items-center gap-1 sm:gap-2">
             <Link href="/wishlist" className={iconCls} aria-label="Wishlist" title="Wishlist">
@@ -96,18 +88,12 @@ export default function WishlistPage() {
 
       <section className="max-w-3xl mx-auto px-5 sm:px-6 py-10">
         <h1 className="text-3xl font-black uppercase mb-8">Wishlist</h1>
-
         {loading ? (
           <p className="font-mono text-sm">Loading...</p>
         ) : !user ? (
           <div className={`${card} border p-8 text-center`}>
             <p className={`${muted} mb-4`}>Please login to view your wishlist.</p>
-            <button
-              onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })}
-              className="bg-[#1b1b18] text-[#f2ede1] px-6 py-3 font-mono text-xs uppercase"
-            >
-              Continue with Google
-            </button>
+            <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })} className="bg-[#000000] text-[#ffffff] px-6 py-3 font-mono text-xs uppercase">Continue with Google</button>
           </div>
         ) : items.length === 0 ? (
           <div className={`${card} border p-8 text-center`}>
@@ -119,24 +105,14 @@ export default function WishlistPage() {
             {items.map(item => (
               <div key={item.id} className={`${card} border p-4 flex gap-4 items-center`}>
                 <Link href={`/product/${item.product_id}`} className="w-20 h-24 shrink-0 overflow-hidden bg-[#e9e1d1]">
-                  {item.products?.image_url && (
-                    <img src={item.products.image_url} alt="" className="w-full h-full object-cover" />
-                  )}
+                  {item.products?.image_url && <img src={item.products.image_url} alt="" className="w-full h-full object-cover" />}
                 </Link>
                 <div className="flex-1 min-w-0">
-                  <Link href={`/product/${item.product_id}`} className="font-semibold uppercase text-sm hover:underline">
-                    {item.products?.name}
-                  </Link>
-                  <p className="font-mono text-[#2c6660] mt-1">
-                    ₹{Number(item.products?.price || 0).toLocaleString('en-IN')}
-                  </p>
+                  <Link href={`/product/${item.product_id}`} className="font-semibold uppercase text-sm hover:underline">{item.products?.name}</Link>
+                  <p className="font-mono text-[#2c6660] mt-1">₹{Number(item.products?.price || 0).toLocaleString('en-IN')}</p>
                   <div className="flex gap-3 mt-2">
-                    <button type="button" onClick={() => addToCart(item.product_id)} className="text-xs underline font-mono">
-                      Add to cart
-                    </button>
-                    <button type="button" onClick={() => removeItem(item.id)} className="text-xs text-red-600 underline">
-                      Remove
-                    </button>
+                    <button type="button" onClick={() => addToCart(item.product_id)} className="text-xs underline font-mono">Add to cart</button>
+                    <button type="button" onClick={() => removeItem(item.id)} className="text-xs text-red-600 underline">Remove</button>
                   </div>
                 </div>
               </div>

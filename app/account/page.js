@@ -38,37 +38,24 @@ export default function AccountPage() {
   const init = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     setUser(user)
-    if (!user) {
-      setLoading(false)
-      return
-    }
+    if (!user) { setLoading(false); return }
     await fetchOrders(user)
   }
 
   const fetchOrders = async (u) => {
     let q = supabase.from('orders').select('*').order('created_at', { ascending: false })
-    if (u?.id) {
-      q = q.or(`user_id.eq.${u.id},customer_email.eq.${u.email}`)
-    }
+    if (u?.id) q = q.or(`user_id.eq.${u.id},customer_email.eq.${u.email}`)
     const { data } = await q
     setOrders(data || [])
     setLoading(false)
   }
 
   const isCOD = (order) =>
-    order.payment_method === 'cod' ||
-    order.status === 'cod' ||
-    order.status === 'money_received'
+    order.payment_method === 'cod' || order.status === 'cod' || order.status === 'money_received'
 
   const getSteps = (order) => {
-    if (order.status === 'cancelled') {
-      return isCOD(order)
-        ? ['Order Placed', 'Cancelled']
-        : ['Paid', 'Cancelled']
-    }
-    if (isCOD(order)) {
-      return ['Order Placed', 'Shipped', 'Delivered']
-    }
+    if (order.status === 'cancelled') return isCOD(order) ? ['Order Placed', 'Cancelled'] : ['Paid', 'Cancelled']
+    if (isCOD(order)) return ['Order Placed', 'Shipped', 'Delivered']
     return ['Paid', 'Shipped', 'Delivered']
   }
 
@@ -86,16 +73,12 @@ export default function AccountPage() {
     return 0
   }
 
-  const canCancel = (order) =>
-    !['delivered', 'money_received', 'cancelled'].includes(order.status)
+  const canCancel = (order) => !['delivered', 'money_received', 'cancelled'].includes(order.status)
 
   const submitCancel = async () => {
     if (!cancelOrderId || !cancelReason) return
     setCancelling(true)
-    await supabase
-      .from('orders')
-      .update({ status: 'cancelled', cancel_reason: cancelReason })
-      .eq('id', cancelOrderId)
+    await supabase.from('orders').update({ status: 'cancelled', cancel_reason: cancelReason }).eq('id', cancelOrderId)
     setCancelOrderId(null)
     setCancelReason('')
     setCancelling(false)
@@ -104,13 +87,8 @@ export default function AccountPage() {
 
   const statusLabel = (order) => {
     const map = {
-      pending: 'Pending',
-      paid: 'Paid',
-      cod: 'Cash on Delivery',
-      shipped: 'Shipped',
-      delivered: 'Delivered',
-      money_received: 'Delivered',
-      cancelled: 'Cancelled'
+      pending: 'Pending', paid: 'Paid', cod: 'Cash on Delivery', shipped: 'Shipped',
+      delivered: 'Delivered', money_received: 'Delivered', cancelled: 'Cancelled'
     }
     return map[order.status] || order.status
   }
@@ -122,21 +100,19 @@ export default function AccountPage() {
     return 'bg-amber-100 text-amber-800'
   }
 
-  const bg = darkMode ? 'bg-[#1b1b18]' : 'bg-[#f2ede1]'
-  const text = darkMode ? 'text-[#f2ede1]' : 'text-[#1b1b18]'
-  const muted = darkMode ? 'text-gray-400' : 'text-gray-600'
-  const card = darkMode ? 'bg-[#252522] border-[#f2ede1]/10' : 'bg-white border-[#1b1b18]/10'
-  const border = darkMode ? 'border-[#f2ede1]/15' : 'border-[#1b1b18]/15'
-  const iconCls = `p-1.5 transition opacity-80 hover:opacity-100 ${
-    darkMode ? 'hover:text-[#e2a233]' : 'hover:text-[#2c6660]'
-  }`
+  const bg = darkMode ? 'bg-[#000000]' : 'bg-[#f2ede1]'
+  const text = darkMode ? 'text-[#ffffff]' : 'text-[#000000]'
+  const muted = darkMode ? 'text-[#cccccc]' : 'text-[#333333]'
+  const card = darkMode ? 'bg-[#0a0a0a] border-[#ffffff]/20' : 'bg-white border-[#000000]/15'
+  const border = darkMode ? 'border-[#ffffff]/20' : 'border-[#000000]/15'
+  const iconCls = `p-1.5 transition opacity-90 hover:opacity-100 ${darkMode ? 'hover:text-[#e2a233]' : 'hover:text-[#2c6660]'}`
 
   return (
     <div className={`min-h-screen ${bg} ${text}`}>
       <header className={`border-b ${border} sticky top-0 ${bg} z-50`}>
         <div className="max-w-6xl mx-auto px-5 sm:px-6 py-3.5 flex items-center justify-between gap-3">
           <Link href="/" className="shrink-0 flex items-center">
-            <img src="/logo.png" alt="Artbit" className="h-8 sm:h-9 w-auto object-contain" />
+            <img src={darkMode ? '/logo-white.png' : '/logo.png'} alt="Artbit" className="h-8 sm:h-9 w-auto object-contain" />
           </Link>
           <div className="flex items-center gap-1 sm:gap-2">
             <Link href="/wishlist" className={iconCls} aria-label="Wishlist" title="Wishlist">
@@ -168,12 +144,7 @@ export default function AccountPage() {
         ) : !user ? (
           <div className={`${card} border p-8 text-center`}>
             <p className={`${muted} mb-4`}>Please login to view your orders.</p>
-            <button
-              onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })}
-              className="bg-[#1b1b18] text-[#f2ede1] px-6 py-3 font-mono text-xs uppercase"
-            >
-              Continue with Google
-            </button>
+            <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })} className="bg-[#000000] text-[#ffffff] px-6 py-3 font-mono text-xs uppercase">Continue with Google</button>
           </div>
         ) : orders.length === 0 ? (
           <div className={`${card} border p-8 text-center`}>
@@ -202,47 +173,24 @@ export default function AccountPage() {
                       {statusLabel(order)}
                     </span>
                   </div>
-
                   <div className="flex items-center gap-0 mb-4 overflow-x-auto">
                     {steps.map((step, i) => (
                       <div key={step} className="flex items-center">
-                        <div
-                          className={`text-[10px] font-mono uppercase px-2.5 py-1.5 whitespace-nowrap ${
-                            i <= active
-                              ? 'bg-[#2c6660] text-white'
-                              : darkMode
-                                ? 'bg-[#333] text-gray-400'
-                                : 'bg-gray-200 text-gray-500'
-                          }`}
-                        >
+                        <div className={`text-[10px] font-mono uppercase px-2.5 py-1.5 whitespace-nowrap ${i <= active ? 'bg-[#2c6660] text-white' : darkMode ? 'bg-[#222] text-[#999]' : 'bg-gray-200 text-gray-500'}`}>
                           {step}
                         </div>
                         {i < steps.length - 1 && (
-                          <div className={`w-4 h-0.5 ${i < active ? 'bg-[#2c6660]' : darkMode ? 'bg-[#333]' : 'bg-gray-200'}`} />
+                          <div className={`w-4 h-0.5 ${i < active ? 'bg-[#2c6660]' : darkMode ? 'bg-[#222]' : 'bg-gray-200'}`} />
                         )}
                       </div>
                     ))}
                   </div>
-
-                  {order.estimated_delivery && (
-                    <p className={`text-xs ${muted}`}>Estimated delivery: {order.estimated_delivery}</p>
-                  )}
-                  {order.tracking_note && (
-                    <p className={`text-xs ${muted}`}>Note: {order.tracking_note}</p>
-                  )}
-                  {order.cancel_reason && (
-                    <p className="text-xs text-red-600 mt-1">Cancel reason: {order.cancel_reason}</p>
-                  )}
-                  {order.address && (
-                    <p className={`text-xs ${muted} mt-1`}>{order.address}</p>
-                  )}
-
+                  {order.estimated_delivery && <p className={`text-xs ${muted}`}>Estimated delivery: {order.estimated_delivery}</p>}
+                  {order.tracking_note && <p className={`text-xs ${muted}`}>Note: {order.tracking_note}</p>}
+                  {order.cancel_reason && <p className="text-xs text-red-600 mt-1">Cancel reason: {order.cancel_reason}</p>}
+                  {order.address && <p className={`text-xs ${muted} mt-1`}>{order.address}</p>}
                   {canCancel(order) && (
-                    <button
-                      type="button"
-                      onClick={() => { setCancelOrderId(order.id); setCancelReason('') }}
-                      className="mt-4 text-xs text-red-600 underline font-mono"
-                    >
+                    <button type="button" onClick={() => { setCancelOrderId(order.id); setCancelReason('') }} className="mt-4 text-xs text-red-600 underline font-mono">
                       Cancel order
                     </button>
                   )}
@@ -261,31 +209,16 @@ export default function AccountPage() {
             <div className="space-y-2 mb-5">
               {CANCEL_REASONS.map(r => (
                 <label key={r} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="radio"
-                    name="reason"
-                    value={r}
-                    checked={cancelReason === r}
-                    onChange={() => setCancelReason(r)}
-                  />
+                  <input type="radio" name="reason" value={r} checked={cancelReason === r} onChange={() => setCancelReason(r)} />
                   {r}
                 </label>
               ))}
             </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={!cancelReason || cancelling}
-                onClick={submitCancel}
-                className="flex-1 bg-red-600 text-white py-2.5 font-mono text-xs uppercase disabled:opacity-40"
-              >
+              <button type="button" disabled={!cancelReason || cancelling} onClick={submitCancel} className="flex-1 bg-red-600 text-white py-2.5 font-mono text-xs uppercase disabled:opacity-40">
                 {cancelling ? '...' : 'Confirm Cancel'}
               </button>
-              <button
-                type="button"
-                onClick={() => setCancelOrderId(null)}
-                className={`flex-1 border py-2.5 font-mono text-xs uppercase ${border}`}
-              >
+              <button type="button" onClick={() => setCancelOrderId(null)} className={`flex-1 border py-2.5 font-mono text-xs uppercase ${border}`}>
                 Keep Order
               </button>
             </div>
