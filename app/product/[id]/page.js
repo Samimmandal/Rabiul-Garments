@@ -113,29 +113,47 @@ export default function ProductDetails() {
     return true
   }
 
-  const addToCart = async () => {
+    const addToCart = async () => {
     if (!requireLogin()) return
     setCartLoading(true)
+    const { data: { user: u } } = await supabase.auth.getUser()
+    if (!u) {
+      alert('Please login first')
+      setCartLoading(false)
+      return
+    }
     const { error } = await supabase.from('cart').upsert({
-      user_id: user.id,
-      product_id: parseInt(id),
+      user_id: u.id,
+      product_id: Number(id),
       quantity: 1,
       size: selectedSize || 'M'
     }, { onConflict: 'user_id,product_id,size' })
-    if (error) alert('Error: ' + error.message)
-    else alert('Added to cart!')
+    if (error) {
+      alert('Cart error: ' + error.message)
+    } else {
+      alert('Added to cart!')
+    }
     setCartLoading(false)
   }
 
   const addToWishlist = async () => {
     if (!requireLogin()) return
     setWishLoading(true)
+    const { data: { user: u } } = await supabase.auth.getUser()
+    if (!u) {
+      alert('Please login first')
+      setWishLoading(false)
+      return
+    }
     const { error } = await supabase.from('wishlist').upsert({
-      user_id: user.id,
-      product_id: parseInt(id)
+      user_id: u.id,
+      product_id: Number(id)
     }, { onConflict: 'user_id,product_id' })
-    if (error) alert('Error: ' + error.message)
-    else alert('Added to wishlist!')
+    if (error) {
+      alert('Wishlist error: ' + error.message)
+    } else {
+      alert('Added to wishlist!')
+    }
     setWishLoading(false)
   }
 

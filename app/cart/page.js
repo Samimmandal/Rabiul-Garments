@@ -11,6 +11,7 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
   const [darkMode, setDarkMode] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
     const saved = localStorage.getItem('artbit-theme')
@@ -27,28 +28,74 @@ export default function CartPage() {
   const init = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     setUser(user)
-    if (!user) { setLoading(false); return }
+    if (!user) {
+      setLoading(false)
+      return
+    }
     await fetchCart(user.id)
   }
 
   const fetchCart = async (userId) => {
-    const { data } = await supabase.from('cart').select('*, products(*)').eq('user_id', userId)
-    setItems(data || [])
+    setErrorMsg('')
+    // 1) cart rows
+    const { data: cartRows, error: cartErr } = await supabase
+      .from('cart')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (cartErr) {
+      setErrorMsg(cartErr.message)
+      setItems([])
+      setLoading(false)
+      return
+    }
+
+    if (!cartRows || cartRows.length === 0) {
+      setItems([])
+      setLoading(false)
+      return
+    }
+
+    // 2) products separately (avoids join/FK issues)
+    const ids = [...new Set(cartRows.map(r => r.product_id))]
+    const { data: products, error: prodErr } = await supabase
+      .from('products')
+      .select('*')
+      .in('id', ids)
+
+    if (prodErr) {
+      setErrorMsg(prodErr.message)
+    }
+
+    const map = {}
+    ;(products || []).forEach(p => { map[p.id] = p })
+
+    const merged = cartRows.map(row => ({
+      ...row,
+      products: map[row.product_id] || null
+    }))
+
+    setItems(merged)
     setLoading(false)
   }
 
   const updateQty = async (id, qty) => {
     if (qty < 1) return
-    await supabase.from('cart').update({ quantity: qty }).eq('id', id)
+    const { error } = await supabase.from('cart').update({ quantity: qty }).eq('id', id)
+    if (error) alert(error.message)
     if (user) fetchCart(user.id)
   }
 
   const removeItem = async (id) => {
-    await supabase.from('cart').delete().eq('id', id)
+    const { error } = await supabase.from('cart').delete().eq('id', id)
+    if (error) alert(error.message)
     if (user) fetchCart(user.id)
   }
 
-  const total = items.reduce((sum, item) => sum + Number(item.products?.price || 0) * (item.quantity || 1), 0)
+  const total = items.reduce((sum, item) => {
+    return sum + Number(item.products?.price || 0) * (item.quantity || 1)
+  }, 0)
 
   const bg = darkMode ? 'bg-[#000000]' : 'bg-[#f2ede1]'
   const text = darkMode ? 'text-[#ffffff]' : 'text-[#000000]'
@@ -87,12 +134,19 @@ export default function CartPage() {
 
       <section className="max-w-3xl mx-auto px-5 sm:px-6 py-10">
         <h1 className="text-3xl font-black uppercase mb-8">Your Cart</h1>
+        {errorMsg && <p className="text-red-600 text-sm mb-4 font-mono">{errorMsg}</p>}
+
         {loading ? (
           <p className="font-mono text-sm">Loading...</p>
         ) : !user ? (
           <div className={`${card} border p-8 text-center`}>
             <p className={`${muted} mb-4`}>Please login to view your cart.</p>
-            <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })} className="bg-[#000000] text-[#ffffff] px-6 py-3 font-mono text-xs uppercase">Continue with Google</button>
+            <button
+              onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })}
+              className="bg-[#000000] text-[#ffffff] px-6 py-3 font-mono text-xs uppercase"
+            >
+              Continue with Google
+            </button>
           </div>
         ) : items.length === 0 ? (
           <div className={`${card} border p-8 text-center`}>
@@ -105,12 +159,16 @@ export default function CartPage() {
               {items.map(item => (
                 <div key={item.id} className={`${card} border p-4 flex gap-4 items-center`}>
                   <div className="w-20 h-24 shrink-0 overflow-hidden bg-[#e9e1d1]">
-                    {item.products?.image_url && <img src={item.products.image_url} alt="" className="w-full h-full object-cover" />}
+                    {item.products?.image_url && (
+                      <img src={item.products.image_url} alt="" className="w-full h-full object-cover" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold uppercase text-sm">{item.products?.name}</p>
+                    <p className="font-semibold uppercase text-sm">{item.products?.name || `Product #${item.product_id}`}</p>
                     <p className={`text-xs ${muted} mt-0.5`}>Size: {item.size || '—'}</p>
-                    <p className="font-mono text-[#2c6660] mt-1">₹{Number(item.products?.price || 0).toLocaleString('en-IN')}</p>
+                    <p className="font-mono text-[#2c6660] mt-1">
+                      ₹{Number(item.products?.price || 0).toLocaleString('en-IN')}
+                    </p>
                     <div className="flex items-center gap-2 mt-2">
                       <button type="button" onClick={() => updateQty(item.id, (item.quantity || 1) - 1)} className="w-8 h-8 border text-sm">−</button>
                       <span className="font-mono text-sm w-6 text-center">{item.quantity || 1}</span>
@@ -126,7 +184,11 @@ export default function CartPage() {
                 <span className="font-semibold">Total</span>
                 <span className="font-mono text-lg text-[#2c6660]">₹{total.toLocaleString('en-IN')}</span>
               </div>
-              <button type="button" onClick={() => router.push('/checkout')} className="w-full bg-[#2c6660] text-white py-3.5 font-mono text-xs uppercase tracking-wider">
+              <button
+                type="button"
+                onClick={() => router.push('/checkout')}
+                className="w-full bg-[#2c6660] text-white py-3.5 font-mono text-xs uppercase tracking-wider"
+              >
                 Proceed to Checkout
               </button>
             </div>
