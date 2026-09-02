@@ -29,7 +29,6 @@ export default function AdminOrders() {
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false })
-
     if (!error) setOrders(data || [])
     setLoading(false)
   }
@@ -39,7 +38,6 @@ export default function AdminOrders() {
       .from('orders')
       .update({ status: newStatus })
       .eq('id', id)
-
     if (error) alert('Error: ' + error.message)
     else fetchOrders()
   }
@@ -49,12 +47,14 @@ export default function AdminOrders() {
       .from('orders')
       .update({ [field]: value })
       .eq('id', id)
-
     if (error) alert('Error: ' + error.message)
     else fetchOrders()
   }
 
-  const isCOD = (status) => status === 'cod' || status === 'money_received'
+  const isCOD = (order) =>
+    order.payment_method === 'cod' ||
+    order.status === 'cod' ||
+    order.status === 'money_received'
 
   const statusColor = (status) => {
     if (status === 'paid') return 'text-green-800 bg-green-100'
@@ -79,13 +79,22 @@ export default function AdminOrders() {
     return map[status] || status
   }
 
-  // Admin tracking steps per order type
-  const getAdminSteps = (order) => {
-    if (order.status === 'cancelled') return null
-    if (isCOD(order.status) || order.status === 'cod') {
-      return ['cod', 'shipped', 'delivered', 'money_received']
+  // COD: placed → shipped → delivered → money received
+  // Prepaid: paid → shipped → delivered
+  const getAdminButtons = (order) => {
+    if (isCOD(order)) {
+      return [
+        { key: 'cod', label: 'placed' },
+        { key: 'shipped', label: 'shipped' },
+        { key: 'delivered', label: 'delivered' },
+        { key: 'money_received', label: 'money recv' }
+      ]
     }
-    return ['paid', 'shipped', 'delivered']
+    return [
+      { key: 'paid', label: 'paid' },
+      { key: 'shipped', label: 'shipped' },
+      { key: 'delivered', label: 'delivered' }
+    ]
   }
 
   return (
@@ -101,7 +110,7 @@ export default function AdminOrders() {
 
       <main className="max-w-6xl mx-auto px-5 py-8">
         <p className="text-sm text-gray-600 mb-6">
-          COD: Order Placed → Shipped → Delivered → Money Received · Prepaid: Paid → Shipped → Delivered
+          COD: Placed → Shipped → Delivered → Money Received · Prepaid: Paid → Shipped → Delivered
         </p>
 
         {loading ? (
@@ -111,7 +120,9 @@ export default function AdminOrders() {
         ) : (
           <div className="space-y-4">
             {orders.map(order => {
-              const steps = getAdminSteps(order)
+              const buttons = getAdminButtons(order)
+              const cod = isCOD(order)
+
               return (
                 <div key={order.id} className="bg-white border border-[#1b1b18]/15 p-5">
                   <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
@@ -120,9 +131,18 @@ export default function AdminOrders() {
                         <h3 className="font-semibold">
                           #{order.id} — {order.customer_name}
                         </h3>
-                        <span className={`text-[11px] font-mono uppercase px-2 py-0.5 rounded ${statusColor(order.status)}`}>
+                        <span
+                          className={`text-[11px] font-mono uppercase px-2 py-0.5 rounded ${statusColor(
+                            order.status
+                          )}`}
+                        >
                           {statusLabel(order.status)}
                         </span>
+                        {cod && order.status !== 'cancelled' && (
+                          <span className="text-[10px] font-mono uppercase text-yellow-700 border border-yellow-400 px-1.5 py-0.5">
+                            COD
+                          </span>
+                        )}
                       </div>
 
                       <p className="text-sm text-gray-700">
@@ -156,7 +176,7 @@ export default function AdminOrders() {
                           <input
                             type="date"
                             defaultValue={order.estimated_delivery || ''}
-                            onBlur={(e) =>
+                            onBlur={e =>
                               updateTracking(order.id, 'estimated_delivery', e.target.value || null)
                             }
                             className="w-full border border-gray-300 px-2 py-1.5 text-sm outline-none"
@@ -170,7 +190,7 @@ export default function AdminOrders() {
                             type="text"
                             defaultValue={order.tracking_note || ''}
                             placeholder="e.g. Out for delivery"
-                            onBlur={(e) =>
+                            onBlur={e =>
                               updateTracking(order.id, 'tracking_note', e.target.value || null)
                             }
                             className="w-full border border-gray-300 px-2 py-1.5 text-sm outline-none"
@@ -184,17 +204,17 @@ export default function AdminOrders() {
                         <span className="text-xs font-mono text-red-600 uppercase">Cancelled</span>
                       ) : (
                         <>
-                          {(steps || ['paid', 'cod', 'shipped', 'delivered', 'money_received']).map(s => (
+                          {buttons.map(b => (
                             <button
-                              key={s}
-                              onClick={() => updateStatus(order.id, s)}
+                              key={b.key}
+                              onClick={() => updateStatus(order.id, b.key)}
                               className={`text-[11px] font-mono uppercase px-2.5 py-1 border transition ${
-                                order.status === s
+                                order.status === b.key
                                   ? 'bg-[#1b1b18] text-white border-[#1b1b18]'
                                   : 'border-gray-400 text-gray-700 hover:border-[#1b1b18]'
                               }`}
                             >
-                              {s === 'cod' ? 'placed' : s === 'money_received' ? 'money recv' : s}
+                              {b.label}
                             </button>
                           ))}
                           <button

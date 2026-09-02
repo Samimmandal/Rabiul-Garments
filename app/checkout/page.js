@@ -23,7 +23,11 @@ export default function CheckoutPage() {
   useEffect(() => {
     const raw = sessionStorage.getItem('artbit-checkout-cart')
     if (raw) {
-      try { setCart(JSON.parse(raw)) } catch { setCart([]) }
+      try {
+        setCart(JSON.parse(raw))
+      } catch {
+        setCart([])
+      }
     }
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user)
@@ -37,12 +41,15 @@ export default function CheckoutPage() {
     })
   }, [])
 
-  const subtotal = cart.reduce((sum, item) => sum + (Number(item.product?.price || 0) * item.quantity), 0)
+  const subtotal = cart.reduce(
+    (sum, item) => sum + Number(item.product?.price || 0) * item.quantity,
+    0
+  )
 
   const discountAmount = appliedCoupon
     ? appliedCoupon.discount_percent
       ? Math.round(subtotal * (appliedCoupon.discount_percent / 100))
-      : (appliedCoupon.discount_amount || 0)
+      : appliedCoupon.discount_amount || 0
     : 0
 
   const total = Math.max(0, subtotal - discountAmount)
@@ -66,7 +73,6 @@ export default function CheckoutPage() {
       return
     }
     setAppliedCoupon(data)
-    setCouponError('')
   }
 
   const removeCoupon = () => {
@@ -75,40 +81,46 @@ export default function CheckoutPage() {
     setCouponError('')
   }
 
-  const loadRazorpayScript = () => new Promise((resolve) => {
-    const script = document.createElement('script')
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-    script.onload = () => resolve(true)
-    script.onerror = () => resolve(false)
-    document.body.appendChild(script)
-  })
+  const loadRazorpayScript = () =>
+    new Promise(resolve => {
+      const script = document.createElement('script')
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+      script.onload = () => resolve(true)
+      script.onerror = () => resolve(false)
+      document.body.appendChild(script)
+    })
 
-  const saveOrder = async (status) => {
+  const saveOrder = async (status, paymentMethod) => {
     const { data: order, error } = await supabase
       .from('orders')
-      .insert([{
-        customer_name: form.customer_name,
-        customer_email: form.customer_email,
-        customer_phone: form.customer_phone,
-        address: form.address,
-        total_amount: total,
-        status: status,
-        user_id: user?.id || null,
-        tracking_note: appliedCoupon ? `Coupon: ${appliedCoupon.code}` : null
-      }])
+      .insert([
+        {
+          customer_name: form.customer_name,
+          customer_email: form.customer_email,
+          customer_phone: form.customer_phone,
+          address: form.address,
+          total_amount: total,
+          status,
+          payment_method: paymentMethod,
+          user_id: user?.id || null,
+          tracking_note: appliedCoupon ? `Coupon: ${appliedCoupon.code}` : null
+        }
+      ])
       .select()
       .single()
 
     if (error) throw error
 
     for (const item of cart) {
-      await supabase.from('order_items').insert([{
-        order_id: order.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price: item.product?.price,
-        size: item.size
-      }])
+      await supabase.from('order_items').insert([
+        {
+          order_id: order.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          price: item.product?.price,
+          size: item.size
+        }
+      ])
     }
 
     if (user) {
@@ -118,7 +130,7 @@ export default function CheckoutPage() {
     return order
   }
 
-  const handlePayOnline = async (e) => {
+  const handlePayOnline = async e => {
     e.preventDefault()
     if (cart.length === 0) return
     setSubmitting(true)
@@ -142,7 +154,7 @@ export default function CheckoutPage() {
         order_id: razorpayOrder.id,
         handler: async function () {
           try {
-            await saveOrder('paid')
+            await saveOrder('paid', 'online')
             alert('Payment successful! Order placed.')
             router.push('/account')
           } catch (err) {
@@ -163,13 +175,13 @@ export default function CheckoutPage() {
     setSubmitting(false)
   }
 
-  const handleCOD = async (e) => {
+  const handleCOD = async e => {
     e.preventDefault()
     if (cart.length === 0) return
     if (!confirm('Place order with Cash on Delivery?')) return
     setSubmitting(true)
     try {
-      await saveOrder('cod')
+      await saveOrder('cod', 'cod')
       alert('COD order placed! Pay when you receive the product.')
       router.push('/account')
     } catch (err) {
@@ -182,8 +194,12 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-[#f2ede1] text-[#1b1b18]">
       <header className="border-b border-[#1b1b18]/20 sticky top-0 bg-[#f2ede1] z-50">
         <div className="max-w-6xl mx-auto px-5 py-4 flex justify-between">
-          <Link href="/" className="font-black text-xl uppercase">Artbit</Link>
-          <Link href="/cart" className="text-xs font-mono uppercase hover:underline">← Cart</Link>
+          <Link href="/" className="font-black text-xl uppercase">
+            Artbit
+          </Link>
+          <Link href="/cart" className="text-xs font-mono uppercase hover:underline">
+            ← Cart
+          </Link>
         </div>
       </header>
 
@@ -191,14 +207,20 @@ export default function CheckoutPage() {
         <h1 className="text-3xl font-black uppercase mb-8">Checkout</h1>
 
         {cart.length === 0 ? (
-          <p className="text-gray-600">No items. <Link href="/cart" className="underline">Go to cart</Link></p>
+          <p className="text-gray-600">
+            No items. <Link href="/cart" className="underline">Go to cart</Link>
+          </p>
         ) : (
           <>
             <div className="bg-white border border-[#1b1b18]/15 p-4 mb-6 space-y-2">
               {cart.map(item => (
                 <div key={item.id} className="flex justify-between text-sm">
-                  <span>{item.product?.name} × {item.quantity} ({item.size})</span>
-                  <span className="font-mono">₹{(Number(item.product?.price || 0) * item.quantity).toLocaleString('en-IN')}</span>
+                  <span>
+                    {item.product?.name} × {item.quantity} ({item.size})
+                  </span>
+                  <span className="font-mono">
+                    ₹{(Number(item.product?.price || 0) * item.quantity).toLocaleString('en-IN')}
+                  </span>
                 </div>
               ))}
               <div className="border-t pt-2 space-y-1 text-sm">
@@ -214,18 +236,23 @@ export default function CheckoutPage() {
                 )}
                 <div className="flex justify-between font-semibold text-base pt-1">
                   <span>Total</span>
-                  <span className="font-mono text-[#2c6660]">₹{total.toLocaleString('en-IN')}</span>
+                  <span className="font-mono text-[#2c6660]">
+                    ₹{total.toLocaleString('en-IN')}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Coupon */}
             <div className="bg-white border border-[#1b1b18]/15 p-4 mb-6">
               <p className="text-xs font-mono uppercase text-gray-500 mb-2">Coupon Code</p>
               {appliedCoupon ? (
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-mono text-[#2c6660] font-bold">{appliedCoupon.code} applied</p>
-                  <button type="button" onClick={removeCoupon} className="text-xs underline text-red-600">Remove</button>
+                  <p className="text-sm font-mono text-[#2c6660] font-bold">
+                    {appliedCoupon.code} applied
+                  </p>
+                  <button type="button" onClick={removeCoupon} className="text-xs underline text-red-600">
+                    Remove
+                  </button>
                 </div>
               ) : (
                 <div className="flex gap-2">
@@ -235,7 +262,11 @@ export default function CheckoutPage() {
                     placeholder="e.g. ARTBIT10"
                     className="flex-1 border border-gray-300 px-3 py-2 text-sm outline-none uppercase"
                   />
-                  <button type="button" onClick={applyCoupon} className="bg-[#1b1b18] text-white px-4 py-2 text-xs font-mono uppercase">
+                  <button
+                    type="button"
+                    onClick={applyCoupon}
+                    className="bg-[#1b1b18] text-white px-4 py-2 text-xs font-mono uppercase"
+                  >
                     Apply
                   </button>
                 </div>
@@ -244,15 +275,47 @@ export default function CheckoutPage() {
             </div>
 
             <form className="space-y-4">
-              <input required placeholder="Full Name *" value={form.customer_name} onChange={e => setForm({...form, customer_name: e.target.value})} className="w-full border-b border-gray-300 py-2 outline-none bg-transparent" />
-              <input required type="email" placeholder="Email *" value={form.customer_email} onChange={e => setForm({...form, customer_email: e.target.value})} className="w-full border-b border-gray-300 py-2 outline-none bg-transparent" />
-              <input required placeholder="Phone *" value={form.customer_phone} onChange={e => setForm({...form, customer_phone: e.target.value})} className="w-full border-b border-gray-300 py-2 outline-none bg-transparent" />
-              <textarea required placeholder="Delivery Address *" value={form.address} onChange={e => setForm({...form, address: e.target.value})} className="w-full border border-gray-300 p-2 outline-none bg-transparent" rows={3} />
+              <input
+                required
+                placeholder="Full Name *"
+                value={form.customer_name}
+                onChange={e => setForm({ ...form, customer_name: e.target.value })}
+                className="w-full border-b border-gray-300 py-2 outline-none bg-transparent"
+              />
+              <input
+                required
+                type="email"
+                placeholder="Email *"
+                value={form.customer_email}
+                onChange={e => setForm({ ...form, customer_email: e.target.value })}
+                className="w-full border-b border-gray-300 py-2 outline-none bg-transparent"
+              />
+              <input
+                required
+                placeholder="Phone *"
+                value={form.customer_phone}
+                onChange={e => setForm({ ...form, customer_phone: e.target.value })}
+                className="w-full border-b border-gray-300 py-2 outline-none bg-transparent"
+              />
+              <textarea
+                required
+                placeholder="Delivery Address *"
+                value={form.address}
+                onChange={e => setForm({ ...form, address: e.target.value })}
+                className="w-full border border-gray-300 p-2 outline-none bg-transparent"
+                rows={3}
+              />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
                 <button
                   type="button"
-                  disabled={submitting || !form.customer_name || !form.customer_email || !form.customer_phone || !form.address}
+                  disabled={
+                    submitting ||
+                    !form.customer_name ||
+                    !form.customer_email ||
+                    !form.customer_phone ||
+                    !form.address
+                  }
                   onClick={handlePayOnline}
                   className="bg-[#2c6660] text-white py-3.5 font-mono text-sm uppercase disabled:opacity-50"
                 >
@@ -260,7 +323,13 @@ export default function CheckoutPage() {
                 </button>
                 <button
                   type="button"
-                  disabled={submitting || !form.customer_name || !form.customer_email || !form.customer_phone || !form.address}
+                  disabled={
+                    submitting ||
+                    !form.customer_name ||
+                    !form.customer_email ||
+                    !form.customer_phone ||
+                    !form.address
+                  }
                   onClick={handleCOD}
                   className="border border-[#1b1b18] py-3.5 font-mono text-sm uppercase disabled:opacity-50 hover:bg-[#1b1b18] hover:text-white transition"
                 >

@@ -46,41 +46,35 @@ export default function AccountPage() {
       .select('*')
       .or(`user_id.eq.${user.id},customer_email.eq.${user.email}`)
       .order('created_at', { ascending: false })
-
     setOrders(data || [])
     setLoading(false)
   }
 
-  const isCOD = (status) => status === 'cod' || status === 'money_received'
+  // payment_method দিয়ে COD চিনবে — status ship হলেও ঠিক থাকবে
+  const isCOD = (order) =>
+    order.payment_method === 'cod' ||
+    order.status === 'cod' ||
+    order.status === 'money_received'
 
   const getSteps = (order) => {
-    if (order.status === 'cancelled') {
-      // দেখাবে যে পর্যন্ত গিয়েছিল + Cancelled
-      if (isCOD(order.status) || order.status === 'cancelled') {
-        // COD path before cancel — we don't know exact previous, use simple
-        return ['Order Placed', 'Cancelled']
-      }
-    }
-    if (isCOD(order.status) || order.status === 'cod') {
+    if (isCOD(order)) {
       return ['Order Placed', 'Shipped', 'Delivered']
     }
-    // prepaid
     return ['Paid', 'Shipped', 'Delivered']
   }
 
   const getActiveIndex = (order) => {
-    const status = order.status
-    if (status === 'cancelled') return -1 // special
-    if (isCOD(status) || status === 'cod') {
-      if (status === 'cod') return 0
-      if (status === 'shipped') return 1
-      if (status === 'delivered' || status === 'money_received') return 2
+    const s = order.status
+    if (s === 'cancelled') return -1
+    if (isCOD(order)) {
+      if (s === 'cod' || s === 'pending') return 0
+      if (s === 'shipped') return 1
+      if (s === 'delivered' || s === 'money_received') return 2
       return 0
     }
-    // prepaid
-    if (status === 'paid' || status === 'pending') return 0
-    if (status === 'shipped') return 1
-    if (status === 'delivered') return 2
+    if (s === 'paid' || s === 'pending') return 0
+    if (s === 'shipped') return 1
+    if (s === 'delivered') return 2
     return 0
   }
 
@@ -106,8 +100,9 @@ export default function AccountPage() {
     return 'bg-gray-100 text-gray-700'
   }
 
+  // delivered / money_received / cancelled ছাড়া সব অবস্থায় cancel
   const canCancel = (order) => {
-    return !['delivered', 'money_received', 'cancelled', 'shipped'].includes(order.status)
+    return !['delivered', 'money_received', 'cancelled'].includes(order.status)
   }
 
   const submitCancel = async () => {
@@ -125,9 +120,8 @@ export default function AccountPage() {
       })
       .eq('id', cancelOrderId)
 
-    if (error) {
-      alert('Error: ' + error.message)
-    } else {
+    if (error) alert('Error: ' + error.message)
+    else {
       setCancelOrderId(null)
       setCancelReason('')
       if (user) fetchOrders(user)
@@ -161,7 +155,12 @@ export default function AccountPage() {
           <div className={`${card} border p-8 text-center`}>
             <p className={`${muted} mb-4`}>Login to see your orders.</p>
             <button
-              onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/account' } })}
+              onClick={() =>
+                supabase.auth.signInWithOAuth({
+                  provider: 'google',
+                  options: { redirectTo: window.location.origin + '/account' }
+                })
+              }
               className="bg-[#1b1b18] text-[#f2ede1] px-6 py-3 font-mono text-sm uppercase"
             >
               Login with Google
@@ -180,6 +179,7 @@ export default function AccountPage() {
               const steps = getSteps(order)
               const activeIndex = getActiveIndex(order)
               const cancelled = order.status === 'cancelled'
+              const cod = isCOD(order)
 
               return (
                 <div key={order.id} className={`${card} border p-5`}>
@@ -190,9 +190,16 @@ export default function AccountPage() {
                     </span>
                   </div>
 
+                  {cod && order.status !== 'cancelled' && (
+                    <p className="text-[11px] font-mono uppercase text-yellow-700 mb-2">Cash on Delivery</p>
+                  )}
+
                   <p className={`text-sm ${muted}`}>
-                    Placed on {new Date(order.created_at).toLocaleDateString('en-IN', {
-                      day: 'numeric', month: 'long', year: 'numeric'
+                    Placed on{' '}
+                    {new Date(order.created_at).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
                     })}
                   </p>
 
@@ -200,12 +207,12 @@ export default function AccountPage() {
                     ₹{Number(order.total_amount).toLocaleString('en-IN')}
                   </p>
 
-                  {/* Tracking */}
+                  {/* Tracking bar */}
                   <div className="mt-5 flex items-center gap-1 text-[10px] font-mono uppercase">
                     {cancelled ? (
                       <>
                         <div className="flex-1 text-center py-2 border bg-[#2c6660] text-white border-[#2c6660]">
-                          {isCOD(order.status) || true ? 'Order Placed' : 'Paid'}
+                          {cod ? 'Order Placed' : 'Paid'}
                         </div>
                         <div className="w-2 h-0.5 bg-red-400" />
                         <div className="flex-1 text-center py-2 border bg-red-600 text-white border-red-600">
@@ -217,11 +224,21 @@ export default function AccountPage() {
                         const done = activeIndex >= i
                         return (
                           <div key={step} className="flex items-center flex-1">
-                            <div className={`flex-1 text-center py-2 border ${done ? 'bg-[#2c6660] text-white border-[#2c6660]' : 'border-gray-300 opacity-50'}`}>
+                            <div
+                              className={`flex-1 text-center py-2 border ${
+                                done
+                                  ? 'bg-[#2c6660] text-white border-[#2c6660]'
+                                  : 'border-gray-300 opacity-50'
+                              }`}
+                            >
                               {step}
                             </div>
                             {i < steps.length - 1 && (
-                              <div className={`w-2 h-0.5 ${done && activeIndex > i ? 'bg-[#2c6660]' : 'bg-gray-300'}`} />
+                              <div
+                                className={`w-2 h-0.5 ${
+                                  done && activeIndex > i ? 'bg-[#2c6660]' : 'bg-gray-300'
+                                }`}
+                              />
                             )}
                           </div>
                         )
@@ -231,8 +248,11 @@ export default function AccountPage() {
 
                   {order.estimated_delivery && !cancelled && (
                     <p className={`text-xs ${muted} mt-3`}>
-                      Estimated delivery: {new Date(order.estimated_delivery).toLocaleDateString('en-IN', {
-                        day: 'numeric', month: 'long', year: 'numeric'
+                      Estimated delivery:{' '}
+                      {new Date(order.estimated_delivery).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
                       })}
                     </p>
                   )}
@@ -242,12 +262,13 @@ export default function AccountPage() {
                   )}
 
                   {order.cancel_reason && (
-                    <p className="text-xs text-red-600 mt-1">Cancel reason: {order.cancel_reason}</p>
+                    <p className="text-xs text-red-600 mt-1">
+                      Cancel reason: {order.cancel_reason}
+                    </p>
                   )}
 
                   <p className={`text-xs ${muted} mt-2`}>{order.address}</p>
 
-                  {/* Cancel button */}
                   {canCancel(order) && (
                     <div className="mt-4 flex justify-end">
                       <button
@@ -268,15 +289,25 @@ export default function AccountPage() {
         )}
       </main>
 
-      {/* Cancel modal */}
       {cancelOrderId && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className={`${bg} w-full max-w-md p-6`}>
-            <h3 className="font-black uppercase text-lg mb-2">Cancel Order #{cancelOrderId}</h3>
+            <h3 className="font-black uppercase text-lg mb-2">
+              Cancel Order #{cancelOrderId}
+            </h3>
             <p className={`text-sm ${muted} mb-4`}>Please select a reason:</p>
             <div className="space-y-2 mb-6">
               {CANCEL_REASONS.map(reason => (
-                <label key={reason} className={`flex items-center gap-3 p-3 border cursor-pointer ${cancelReason === reason ? 'border-[#1b1b18] bg-black/5' : darkMode ? 'border-[#f2ede1]/20' : 'border-gray-300'}`}>
+                <label
+                  key={reason}
+                  className={`flex items-center gap-3 p-3 border cursor-pointer ${
+                    cancelReason === reason
+                      ? 'border-[#1b1b18] bg-black/5'
+                      : darkMode
+                        ? 'border-[#f2ede1]/20'
+                        : 'border-gray-300'
+                  }`}
+                >
                   <input
                     type="radio"
                     name="cancel_reason"
@@ -298,7 +329,9 @@ export default function AccountPage() {
               </button>
               <button
                 onClick={() => setCancelOrderId(null)}
-                className={`flex-1 border py-3 font-mono text-xs uppercase ${darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'}`}
+                className={`flex-1 border py-3 font-mono text-xs uppercase ${
+                  darkMode ? 'border-[#f2ede1]/40' : 'border-[#1b1b18]'
+                }`}
               >
                 Keep Order
               </button>

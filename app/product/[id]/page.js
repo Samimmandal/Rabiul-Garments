@@ -228,7 +228,8 @@ export default function ProductDetails() {
     document.body.appendChild(script)
   })
 
-  const saveOrder = async (status, totalAmount) => {
+  // payment_method আলাদা সেভ — ship হলেও COD ট্র্যাকিং ঠিক থাকবে
+  const saveOrder = async (status, totalAmount, paymentMethod) => {
     const { data: order, error } = await supabase
       .from('orders')
       .insert([{
@@ -238,6 +239,7 @@ export default function ProductDetails() {
         address: orderForm.address,
         total_amount: totalAmount,
         status,
+        payment_method: paymentMethod,
         user_id: user?.id || null,
         tracking_note: appliedCoupon ? `Coupon: ${appliedCoupon.code}` : null
       }])
@@ -277,7 +279,7 @@ export default function ProductDetails() {
         order_id: razorpayOrder.id,
         handler: async function () {
           try {
-            await saveOrder('paid', total)
+            await saveOrder('paid', total, 'online')
             alert('Payment successful! Order placed.')
             setShowOrderForm(false)
             router.push('/account')
@@ -305,7 +307,7 @@ export default function ProductDetails() {
     setSubmitting(true)
     const { total } = calcTotals()
     try {
-      await saveOrder('cod', total)
+      await saveOrder('cod', total, 'cod')
       alert('COD order placed! Pay when you receive the product.')
       setShowOrderForm(false)
       router.push('/account')
